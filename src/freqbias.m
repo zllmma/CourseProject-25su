@@ -52,11 +52,12 @@ parfor i = 1:num_offsets
     errors_fft_mc = zeros(1, num_trials);
     errors_czt_mc = zeros(1, num_trials);
     errors_improved_czt_mc = zeros(1, num_trials);
+    phases = 2 * pi * rand(1, num_trials); % 随机相位用于每次试验
     
     % Monte Carlo 模拟
     for j = 1:num_trials
         % a. 生成信号和噪声
-        phi = 2 * pi * rand;
+        phi = phases(j); % 随机相位
         s_clean = A * exp(1j * (2 * pi * f_true * t + phi));
         noise = (randn(1, N) + 1j * randn(1, N)) * noise_std_per_component;
         s_noisy = s_clean + noise;

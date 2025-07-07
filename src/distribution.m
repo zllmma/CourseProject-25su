@@ -31,10 +31,11 @@ snr_linear = 10^(SNR_fixed_dB / 10);
 signal_power = A^2;
 noise_power = signal_power / snr_linear;
 noise_std = sqrt(noise_power / 2);
+phases = 2 * pi * rand(1, num_trials); % 随机相位用于每次试验
 
 parfor i = 1:num_trials
     % a. 生成纯净信号 (每次相位随机)
-    phi = 2 * pi * rand;
+    phi = phases(i);
     s_clean = exp(1j * (2 * pi * f_true * t + phi));
 
     % b. 生成噪声

@@ -54,11 +54,12 @@ parfor i = 1:num_snrs
     errors_fft = zeros(1, num_trials);
     errors_czt = zeros(1, num_trials);
     errors_improved_czt = zeros(1, num_trials);
+    phases = 2 * pi * randn(1, num_trials); % 随机相位用于每次试验
 
     for j = 1:num_trials
         % a. 生成纯净信号 (使用复正弦信号)
         % 为增加随机性，每次试验使用不同的初始相位
-        phi = 2 * pi * rand;
+        phi = phases(j);
         s_clean = exp(1j * (2 * pi * f_true * t + phi));
 
         % b. 根据SNR计算噪声功率并生成噪声
@@ -73,12 +74,9 @@ parfor i = 1:num_snrs
         s_noisy = s_clean + noise;
 
         % d. 使用三种算法进行频率估计
-        % 抑制改进CZT算法在边界处可能产生的警告信息
-        warning('off', 'all'); 
         f_fft = fft_est(s_noisy, fs);
         f_czt = czt_est(s_noisy, fs, q, M);
         f_improved_czt = improved_czt_est(s_noisy, fs, q, M);
-        warning('on', 'all');
 
         % e. 计算并存储误差
         errors_fft(j) = f_fft - f_true;

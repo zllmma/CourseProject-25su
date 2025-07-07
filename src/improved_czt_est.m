@@ -41,7 +41,6 @@ if m1 == 0 || m1 == M - 1
     delta_f1 = (2 * q * fs) / (M * N);
     f_start = (m0 - q) * delta_f0;
     f_c = f_start + m1 * delta_f1;
-    warning('峰值位于 CZT 频谱边缘；返回标准 CZT 估计值。');
     return;
 end
 
