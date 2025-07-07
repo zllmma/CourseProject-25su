@@ -1,60 +1,55 @@
-% 示例：使用CZT进行频率估计
-fs = 1000;         % 采样频率
-N = 256;           % 采样点数
-t = (0:N-1)/fs;    % 时间向量
+function f_czt = czt_est(s, fs, q, M)
+% czt_freq_est: 使用 Chirp-Z 变换 (CZT) 方法估计频率
+%
+% 输入:
+%   s   - 输入信号向量
+%   fs  - 采样频率 (Hz)
+%   q   - 用于控制细化区间半宽度的整数
+%   M   - 频率细化倍数 (CZT频谱中的点数)
+%
+% 输出:
+%   f_czt - 估计的频率 (Hz)
+%
+% 该函数首先执行粗略的 FFT 以找到近似频率，然后使用 CZT 在该频率上进行放大以获得更精确的估计
 
-f_true = 50.3;     % 真实信号频率 (故意设置一个不在FFT谱线上的频率)
-x = sin(2*pi*f_true*t) + 0.1*randn(size(t)); % 含噪声的正弦信号
+% 获取采样点数 N
+N = length(s);
 
-% 1. 粗略FFT分析
-Y_fft = fft(x);
-P2 = abs(Y_fft/N);
-P1 = P2(1:N/2+1);
-P1(2:end-1) = 2*P1(2:end-1);
-f_fft = fs*(0:(N/2))/N;
+% --- 步骤 1: 使用 FFT 进行粗略频率估计 ---
+S = fft(s);
+[~, m0] = max(abs(S(1:floor(N/2))));
+m0 = m0 - 1; % 最大谱线的索引
+delta_f0 = fs / N; % FFT 频率分辨率
 
-figure;
-subplot(2,1,1);
-plot(f_fft, P1);
-title('FFT 频谱 (粗略)');
-xlabel('频率 (Hz)');
-ylabel('幅度');
-grid on;
+% --- 步骤 2: 使用 CZT 进行精细频率估计 ---
 
-% 2. 确定感兴趣的频率范围 (例如，在FFT峰值附近)
-% 假设我们从FFT看出峰值在50Hz左右
-f_start = 49;      % CZT起始频率
-f_end = 51;        % CZT终止频率
-M_czt = 2000;      % CZT输出点数 (越多分辨率越高)
+% 定义 CZT 参数 A 和 W，用于 Z 平面单位圆上的螺旋轮廓
+% 轮廓从角度 theta0 开始，并扫过 phi0 * (M-1) 的角度
 
-% 使用 czt 函数进行频率估计
-% cz(x, M, W, A)
-% x: 输入信号
-% M: 输出点数
-% W: Z平面上的螺旋线的比率 W = exp(-j*2*pi*(f_end - f_start) / (M * fs))
-% A: Z平面上的螺旋线的起始点 A = exp(j*2*pi*f_start / fs)
-% 这里我们关心的是频率轴，所以W和A的设置与频率范围相关
+% CZT 轮廓的起始角度
+theta0 = 2 * pi * (m0 - q) / N;
 
-% 转换到 C. Z. Transform 参数
-W = exp(-1i * 2 * pi * (f_end - f_start) / (M_czt * fs));
-A = exp(1i * 2 * pi * f_start / fs);
+% 相邻 CZT 采样点之间的角度步长
+phi0 = 2 * pi * (2 * q) / (M * N);
 
-Y_czt = czt(x, M_czt, W, A);
+% z_k = A * W^(-k)。对于单位圆缩放，设 A0 = 1, W0 = 1
+A = exp(1j * theta0);
+W = exp(-1j * phi0);
 
-% 计算CZT对应的频率轴
-f_czt = (f_start + (0:M_czt-1) * (f_end - f_start) / M_czt);
+% 对信号 s 执行 CZT 以获得精细频谱
+Sczt = czt(s, M, W, A);
 
-subplot(2,1,2);
-plot(f_czt, abs(Y_czt));
-title('CZT 频谱 (局部放大)');
-xlabel('频率 (Hz)');
-ylabel('幅度');
-grid on;
+% 在 CZT 频谱中搜索峰值幅度
+[~, m1] = max(abs(Sczt));
+m1 = m1 - 1; % 精细频谱中最大峰值的索引
 
-% 寻找CZT频谱的峰值
-[max_val, idx_max] = max(abs(Y_czt));
-estimated_f_czt = f_czt(idx_max);
+% 计算 CZT 的频率分辨率
+delta_f1 = (2 * q * fs) / (M * N);
 
-fprintf('FFT 估计的频率 (粗略): %.2f Hz\n', f_fft(find(P1==max(P1))));
-fprintf('CZT 估计的频率 (精确): %.4f Hz\n', estimated_f_czt);
-fprintf('真实频率: %.2f Hz\n', f_true);
+% CZT 分析窗口的起始频率
+f_start = (m0 - q) * delta_f0;
+
+% 计算最终的、更精确的频率估计值
+f_czt = f_start + m1 * delta_f1;
+
+end
