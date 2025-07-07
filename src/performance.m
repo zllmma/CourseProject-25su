@@ -18,25 +18,26 @@ close all;
 clc;
 
 % --- 1. 仿真参数设置 ---
-fs = 10e6;              % 采样频率 (Hz)
-N = 2048;               % 采样点数
+fs = 200e6;              % 采样频率 (Hz)
+N = 1024;               % 采样点数
 t = (0:N-1) / fs;       % 时间向量
 
 % 设置一个非FFT整数倍的频率，以突显栅栏效应
-f_true = 1.14e6;         % 真实信号频率 (Hz)
+f_true = 50.114e6;         % 真实信号频率 (Hz)
 
 SNR_dB = -20:2:12;      % 信噪比范围 (dB)
 num_trials = 1000;      % 每个SNR下的蒙特卡洛试验次数
 
 % CZT 和 改进CZT 算法的参数
 q = 1;                  % 频率细化区间大小控制参数
-M = 32;                 % 频率细化倍数
+M = 64;                 % 频率细化倍数
 
 % --- 2. 初始化结果存储变量 ---
 num_snrs = length(SNR_dB);
 rmse_fft = zeros(1, num_snrs);
 rmse_czt = zeros(1, num_snrs);
 rmse_improved_czt = zeros(1, num_snrs);
+rmse_crlb = zeros(1, num_snrs);
 
 std_fft = zeros(1, num_snrs);
 std_czt = zeros(1, num_snrs);
@@ -89,6 +90,7 @@ for i = 1:num_snrs
     rmse_fft(i) = sqrt(mean(errors_fft.^2));
     rmse_czt(i) = sqrt(mean(errors_czt.^2));
     rmse_improved_czt(i) = sqrt(mean(errors_improved_czt.^2));
+    rmse_crlb(i) = sqrt((6 * fs^2) / ((2*pi)^2 * snr_linear * N * (N^2 - 1)));
 
     std_fft(i) = std(errors_fft);
     std_czt(i) = std(errors_czt);
@@ -104,22 +106,23 @@ semilogy(SNR_dB, rmse_fft, '-o', 'LineWidth', 1.5, 'DisplayName', 'FFT-Peak');
 hold on;
 semilogy(SNR_dB, rmse_czt, '-s', 'LineWidth', 1.5, 'DisplayName', 'CZT');
 semilogy(SNR_dB, rmse_improved_czt, '-^', 'LineWidth', 1.5, 'DisplayName', '改进 CZT');
+semilogy(SNR_dB, rmse_crlb, 'k--', 'LineWidth', 2, 'DisplayName', 'CRLB');
 hold off;
 grid on;
 title('三种频率估计算法的RMSE对比');
-xlabel('信噪比 (SNR, dB)');
-ylabel('均方根误差 (RMSE, Hz)');
+xlabel('SNR (dB)');
+ylabel('RMSE (Hz)');
 legend('show', 'Location', 'northeast');
 
 % 绘制标准差对比图
 figure;
-semilogy(SNR_dB, std_fft, '-o', 'LineWidth', 1.5, 'DisplayName', 'FFT-Peak');
+semilogy(SNR_dB, std_fft, '-o', 'LineWidth', 1.5, 'DisplayName', 'FFT');
 hold on;
 semilogy(SNR_dB, std_czt, '-s', 'LineWidth', 1.5, 'DisplayName', 'CZT');
 semilogy(SNR_dB, std_improved_czt, '-^', 'LineWidth', 1.5, 'DisplayName', '改进 CZT');
 hold off;
 grid on;
 title('三种频率估计算法的标准差对比');
-xlabel('信噪比 (SNR, dB)');
-ylabel('标准差 (Hz)');
+xlabel('SNR (dB)');
+ylabel('SD (Hz)');
 legend('show', 'Location', 'northeast');
