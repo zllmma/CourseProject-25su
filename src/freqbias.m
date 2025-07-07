@@ -40,7 +40,7 @@ signal_power = A^2; % 复信号功率
 noise_power = signal_power / snr_linear;
 noise_std_per_component = sqrt(noise_power / 2);
 
-for i = 1:num_offsets
+parfor i = 1:num_offsets
     current_offset = relative_offsets(i);
     
     % 根据当前频偏计算真实频率

@@ -32,7 +32,7 @@ signal_power = A^2;
 noise_power = signal_power / snr_linear;
 noise_std = sqrt(noise_power / 2);
 
-for i = 1:num_trials
+parfor i = 1:num_trials
     % a. 生成纯净信号 (每次相位随机)
     phi = 2 * pi * rand;
     s_clean = exp(1j * (2 * pi * f_true * t + phi));

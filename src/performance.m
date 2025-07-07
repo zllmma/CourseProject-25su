@@ -46,7 +46,7 @@ std_improved_czt = zeros(1, num_snrs);
 % --- 3. 执行蒙特卡洛模拟 ---
 fprintf('开始蒙特卡洛模拟...\n');
 
-for i = 1:num_snrs
+parfor i = 1:num_snrs
     snr_current_db = SNR_dB(i);
     fprintf('正在处理 SNR = %.0f dB...\n', snr_current_db);
     
@@ -90,6 +90,7 @@ for i = 1:num_snrs
     rmse_fft(i) = sqrt(mean(errors_fft.^2));
     rmse_czt(i) = sqrt(mean(errors_czt.^2));
     rmse_improved_czt(i) = sqrt(mean(errors_improved_czt.^2));
+    snr_linear = 10^(snr_current_db / 10);
     rmse_crlb(i) = sqrt((6 * fs^2) / ((2*pi)^2 * snr_linear * N * (N^2 - 1)));
 
     std_fft(i) = std(errors_fft);
