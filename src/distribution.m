@@ -33,6 +33,9 @@ noise_power = signal_power / snr_linear;
 noise_std = sqrt(noise_power / 2);
 phases = 2 * pi * rand(1, num_trials); % 随机相位用于每次试验
 
+% 并行执行蒙特卡洛模拟
+% 使用 parfor 以加速处理
+% 注意：parfor 需要 Parallel Computing Toolbox 支持
 parfor i = 1:num_trials
     % a. 生成纯净信号 (每次相位随机)
     phi = phases(i);

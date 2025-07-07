@@ -40,6 +40,9 @@ signal_power = A^2; % 复信号功率
 noise_power = signal_power / snr_linear;
 noise_std_per_component = sqrt(noise_power / 2);
 
+% 使用 parfor 并行处理每个相对频偏
+% 以加速模拟过程
+% 注意：parfor 需要 Parallel Computing Toolbox 支持
 parfor i = 1:num_offsets
     current_offset = relative_offsets(i);
     
@@ -54,7 +57,7 @@ parfor i = 1:num_offsets
     errors_improved_czt_mc = zeros(1, num_trials);
     phases = 2 * pi * rand(1, num_trials); % 随机相位用于每次试验
     
-    % Monte Carlo 模拟
+    % 蒙特卡洛模拟
     for j = 1:num_trials
         % a. 生成信号和噪声
         phi = phases(j); % 随机相位

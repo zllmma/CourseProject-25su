@@ -46,6 +46,9 @@ std_improved_czt = zeros(1, num_snrs);
 % --- 3. 执行蒙特卡洛模拟 ---
 fprintf('开始蒙特卡洛模拟...\n');
 
+% 并行执行每个SNR值的试验
+% 使用 parfor 以加速处理
+% 注意：parfor 需要 Parallel Computing Toolbox 支持
 parfor i = 1:num_snrs
     snr_current_db = SNR_dB(i);
     fprintf('正在处理 SNR = %.0f dB...\n', snr_current_db);
