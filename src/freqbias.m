@@ -59,7 +59,7 @@ parfor i = 1:num_offsets
     % 根据当前频偏计算真实频率
     f_true = f_center + current_offset * delta_f0;
     
-    fprintf('正在处理相对频偏: %.1f, 真实频率: %.4f MHz\n', current_offset, f_true/1e6);
+    fprintf('正在处理相对频偏: %.2f, 真实频率: %.4f MHz\n', current_offset, f_true/1e6);
     
     % 用于存储单次频偏下的所有试验误差
     errors_fft_mc = zeros(1, num_trials);
