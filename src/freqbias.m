@@ -17,7 +17,7 @@ delta_f0 = fs / N;      % 频率分辨率
 SNR_dB = -8;            % 固定信噪比 (dB)
 
 % 设置相对频偏的范围
-relative_offsets = -0.5:0.1:0.5;
+relative_offsets = -0.5:0.05:0.5;
 
 num_trials = 1000;      % 每个频偏下的蒙特卡洛试验次数
 

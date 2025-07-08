@@ -1,69 +1,44 @@
 function f_est = mrife_est(s, fs)
-% M_RIFE_ALGORITHM 使用M-Rife算法精确估计信号频率
+%   智能选择Rife或M-Rife算法进行精确频率估计
+%   该函数首先使用常规Rife算法进行探测，通过其修正因子delta_mag判断
+%   信号频率是否落在Rife算法的“甜点区”。
+%   如果落在甜点区，则直接采用Rife的结果；否则，启动更稳健的M-Rife算法。
+%
 %   输入参数:
 %       s  : 输入信号向量 (1 x N)
 %       fs : 采样频率 (Hz)
+%
 %   输出参数:
 %       f_est  : 估计的频率 (Hz)
+%
 
-N = length(s);  % 信号长度
-% ===== 步骤1: 执行第一次Rife估计 =====
-[f1, k1, ~, ~] = rife_algorithm(s, fs);
+% 步骤 1: 进行一次“侦察性”的Rife算法计算
+% 我们需要它的初步估计结果 f_rife，以及关键的判断指标 delta_mag。
+[f_rife, ~, ~, delta_mag] = rife_algorithm(s, fs);
 
-% ===== 步骤2: 计算归一化频偏 =====
-bin_width = fs / N;  % FFT频率分辨率
-f_m = (k1 - 1) * bin_width;  % 最大谱线对应的频率
-delta_f = f1 - f_m;          % 实际频偏
 
-% 计算归一化频偏 (以bin为单位)
-delta_norm = abs(delta_f) / bin_width;
+% 步骤 2: 设定判断阈值
+% delta_mag 理论范围在 [0, 0.5] 之间 (考虑r的方向后)。
+% 当 delta_mag 接近0.5时，性能最好；接近0时，性能最差。
+% 我们设定一个阈值，比如0.25。如果delta_mag大于它，说明次大谱线
+% 的能量足够强，可以认为处于“甜点区”。这个值可以根据需求微调。
+sweet_spot_threshold = 0.25; 
 
-% ===== 步骤3: 判断是否需要进行频谱平移 =====
-if delta_norm <= 1/3
-    % 如果在中心1/3区域，直接返回Rife估计结果
-    f_est = f1;
-    return;
+
+% 步骤 3: 根据 delta_mag 的值进行智能决策
+if  delta_mag > sweet_spot_threshold
+    % --- 情况A: 信号落在Rife的甜点区 ---
+    % delta_mag 足够大，说明Rife算法的结果是可靠且高精度的。
+    % 直接采用这次计算的结果，无需额外操作。
+    % disp('决策: 使用 Rife 算法'); % 可选：取消注释以查看决策过程
+    f_est = f_rife;
+    
 else
-    % ===== 步骤4: 计算频谱平移量 =====
-    % 根据公式(7)计算δ
-    if delta_norm <= bin_width / (3 * bin_width)  % 原文条件：f_Rife - mf_s/n ≤ f_s/(3n)
-        % 计算频谱幅度
-        Y = fft(s, N);
-        A_m = abs(Y(k1));
-        
-        % 确定相邻谱线位置
-        if delta_f < 0
-            k_adj = k1 - 1;
-            if k_adj < 1, k_adj = N; end
-        else
-            k_adj = k1 + 1;
-            if k_adj > N, k_adj = 1; end
-        end
-        A_adj = abs(Y(k_adj));
-        
-        % 计算δ
-        delta_val = 0.5 - A_adj / (A_adj + A_m);
-    else
-        delta_val = 0;
-    end
-    
-    % 确定平移方向
-    r_sign = sign(delta_f);
-    
-    % 计算平移量 (根据公式(9)中的rδf_s/N)
-    delta_shift = r_sign * delta_val * bin_width;
-    
-    % ===== 步骤5: 生成频移信号 =====
-    n = (0:N-1);
-    % 根据公式(8): x'(n) = x(n) * e^{jr^2π(σ/N)n}
-    % 注意：原文中的σ对应这里的delta_shift，但公式(8)有笔误，应为j2π而不是jr^2π
-    shifted_signal = s .* exp(1j * 2 * pi * delta_shift * n / fs);
-    
-    % ===== 步骤6: 对频移信号执行第二次Rife估计 =====
-    [f2, ~, ~, ~] = rife_algorithm(shifted_signal, fs);
-    
-    % ===== 步骤7: 计算最终频率估计 =====
-    % 根据公式(9): f_{M-Rife} = f_0' - rδf_s/N
-    f_est = f2 - delta_shift;
+    % --- 情况B: 信号落在Rife的性能洼地区 ---
+    % delta_mag 太小，说明Rife算法的结果可能不准确。
+    % 在这种情况下，我们启动为“洼地区”专门优化的M-Rife算法。
+    % disp('决策: 使用 M-Rife 算法'); % 可选：取消注释以查看决策过程
+    f_est = mrife_algorithm(s, fs);
 end
+
 end
