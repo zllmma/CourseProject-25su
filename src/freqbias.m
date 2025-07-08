@@ -30,6 +30,11 @@ num_offsets = length(relative_offsets);
 rmse_fft = zeros(1, num_offsets);
 rmse_czt = zeros(1, num_offsets);
 rmse_improved_czt = zeros(1, num_offsets);
+rmse_rife = zeros(1, num_offsets);
+rmse_mrife = zeros(1, num_offsets);
+rmse_irife = zeros(1, num_offsets);
+rmse_iirife = zeros(1, num_offsets);
+rmse_crlb = zeros(1, num_offsets);  % 添加CRLB存储变量
 
 % --- 3. 执行主循环 (遍历所有频偏) ---
 fprintf('开始在 SNR = %.0f dB 下进行模拟...\n', SNR_dB);
@@ -39,6 +44,11 @@ snr_linear = 10^(SNR_dB / 10);
 signal_power = A^2; % 复信号功率
 noise_power = signal_power / snr_linear;
 noise_std_per_component = sqrt(noise_power / 2);
+
+% 计算CRLB (Cramér-Rao Lower Bound)
+% CRLB = sqrt((6 * fs^2) / ((2*pi)^2 * snr_linear * N * (N^2 - 1)))
+% CRLB与频偏无关，仅与SNR、采样点数和采样频率有关
+rmse_crlb(:) = sqrt((6 * fs^2) / ((2*pi)^2 * snr_linear * N * (N^2 - 1)));
 
 % 使用 parfor 并行处理每个相对频偏
 % 以加速模拟过程
@@ -55,6 +65,10 @@ parfor i = 1:num_offsets
     errors_fft_mc = zeros(1, num_trials);
     errors_czt_mc = zeros(1, num_trials);
     errors_improved_czt_mc = zeros(1, num_trials);
+    errors_rife_mc = zeros(1, num_trials);
+    errors_mrife_mc = zeros(1, num_trials);
+    errors_irife_mc = zeros(1, num_trials);
+    errors_iirife_mc = zeros(1, num_trials);
     phases = 2 * pi * rand(1, num_trials); % 随机相位用于每次试验
     
     % 蒙特卡洛模拟
@@ -69,17 +83,29 @@ parfor i = 1:num_offsets
         f_fft = fft_est(s_noisy, fs);
         f_czt = czt_est(s_noisy, fs, q, M);
         f_improved_czt = improved_czt_est(s_noisy, fs, q, M);
+        f_rife = rife_est(s_noisy, fs);
+        f_mrife = mrife_est(s_noisy, fs);
+        f_irife = irife_est(s_noisy, fs);
+        f_iirife = iirife_est(s_noisy, fs);
 
         % c. 计算并存储误差
         errors_fft_mc(j) = f_fft - f_true;
         errors_czt_mc(j) = f_czt - f_true;
         errors_improved_czt_mc(j) = f_improved_czt - f_true;
+        errors_rife_mc(j) = f_rife - f_true;
+        errors_mrife_mc(j) = f_mrife - f_true;
+        errors_irife_mc(j) = f_irife - f_true;
+        errors_iirife_mc(j) = f_iirife - f_true;
     end
     
     % d. 计算当前频偏下的RMSE
     rmse_fft(i) = sqrt(mean(errors_fft_mc.^2));
     rmse_czt(i) = sqrt(mean(errors_czt_mc.^2));
     rmse_improved_czt(i) = sqrt(mean(errors_improved_czt_mc.^2));
+    rmse_rife(i) = sqrt(mean(errors_rife_mc.^2));
+    rmse_mrife(i) = sqrt(mean(errors_mrife_mc.^2));
+    rmse_irife(i) = sqrt(mean(errors_irife_mc.^2));
+    rmse_iirife(i) = sqrt(mean(errors_iirife_mc.^2));
 end
 
 fprintf('模拟完成。\n');
@@ -90,6 +116,11 @@ semilogy(relative_offsets, rmse_fft, '-o', 'LineWidth', 1.5, 'DisplayName', 'FFT
 hold on;
 semilogy(relative_offsets, rmse_czt, '-s', 'LineWidth', 1.5, 'DisplayName', 'CZT');
 semilogy(relative_offsets, rmse_improved_czt, '-^', 'LineWidth', 1.5, 'DisplayName', '改进 CZT');
+semilogy(relative_offsets, rmse_rife, '-d', 'LineWidth', 1.5, 'DisplayName', 'Rife');
+semilogy(relative_offsets, rmse_mrife, '-x', 'LineWidth', 1.5, 'DisplayName', 'M-Rife');
+semilogy(relative_offsets, rmse_irife, '-+', 'LineWidth', 1.5, 'DisplayName', 'I-Rife');
+semilogy(relative_offsets, rmse_iirife, '-*', 'LineWidth', 1.5, 'DisplayName', 'IIRife');
+semilogy(relative_offsets, rmse_crlb, 'k--', 'LineWidth', 2, 'DisplayName', 'CRLB');
 hold off;
 grid on;
 title(['SNR = ' num2str(SNR_dB) ' dB 时, RMSE随相对频偏的变化']);

@@ -27,7 +27,7 @@ else
     shifted_signal = s .* exp(1j * 2 * pi * delta_shift * n / fs);  % 论文公式(8)
     
     % ===== 步骤6: 对频移信号执行第二次Rife估计 =====
-    f2 = rife_algorithm(shifted_signal, fs);
+    [f2, ~, ~, ~] = rife_algorithm(shifted_signal, fs);
     
     % ===== 步骤7: 计算最终频率估计 =====
     f_est = f2 - delta_shift;  % 论文公式(9)
