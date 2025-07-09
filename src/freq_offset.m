@@ -9,20 +9,20 @@ clc;
 addpath('algorithms');
 
 % --- 1. 模拟参数设置 ---
-fs = 200e6;             % 采样频率 (200 MHz)
-N = 1024;               % 采样点数
-t = (0:N-1) / fs;       % 时间向量
-A = 1.0;                % 信号幅度
+fs = 200e6; % 采样频率 (200 MHz)
+N = 1024; % 采样点数
+t = (0:N - 1) / fs; % 时间向量
+A = 1.0; % 信号幅度
 
-f_center = 50e6;        % 中心频率 (50 MHz)
-delta_f0 = fs / N;      % 频率分辨率
+f_center = 50e6; % 中心频率 (50 MHz)
+delta_f0 = fs / N; % 频率分辨率
 
-SNR_dB = -8;            % 固定信噪比 (dB)
+SNR_dB = -8; % 固定信噪比 (dB)
 
 % 设置相对频偏的范围
 relative_offsets = -0.5:0.05:0.5;
 
-num_trials = 1000;      % 每个频偏下的蒙特卡洛试验次数
+num_trials = 1000; % 每个频偏下的蒙特卡洛试验次数
 
 % CZT 参数
 q = 1;
@@ -37,33 +37,33 @@ rmse_rife = zeros(1, num_offsets);
 rmse_mrife = zeros(1, num_offsets);
 rmse_irife = zeros(1, num_offsets);
 rmse_iirife = zeros(1, num_offsets);
-rmse_crlb = zeros(1, num_offsets);  % 添加CRLB存储变量
+rmse_crlb = zeros(1, num_offsets); % 添加CRLB存储变量
 
 % --- 3. 执行主循环 (遍历所有频偏) ---
 fprintf('开始在 SNR = %.0f dB 下进行模拟...\n', SNR_dB);
 
 % 提前计算噪声参数
-snr_linear = 10^(SNR_dB / 10);
-signal_power = A^2; % 复信号功率
+snr_linear = 10 ^ (SNR_dB / 10);
+signal_power = A ^ 2; % 复信号功率
 noise_power = signal_power / snr_linear;
 noise_std_per_component = sqrt(noise_power / 2);
 
 % 计算CRLB (Cramér-Rao Lower Bound)
 % CRLB = sqrt((6 * fs^2) / ((2*pi)^2 * snr_linear * N * (N^2 - 1)))
 % CRLB与频偏无关，仅与SNR、采样点数和采样频率有关
-rmse_crlb(:) = sqrt((6 * fs^2) / ((2*pi)^2 * snr_linear * N * (N^2 - 1)));
+rmse_crlb(:) = sqrt((6 * fs ^ 2) / ((2 * pi) ^ 2 * snr_linear * N * (N ^ 2 - 1)));
 
 % 使用 parfor 并行处理每个相对频偏
 % 以加速模拟过程
 % 注意：parfor 需要 Parallel Computing Toolbox 支持
 parfor i = 1:num_offsets
     current_offset = relative_offsets(i);
-    
+
     % 根据当前频偏计算真实频率
     f_true = f_center + current_offset * delta_f0;
-    
-    fprintf('正在处理相对频偏: %.2f, 真实频率: %.4f MHz\n', current_offset, f_true/1e6);
-    
+
+    fprintf('正在处理相对频偏: %.2f, 真实频率: %.4f MHz\n', current_offset, f_true / 1e6);
+
     % 用于存储单次频偏下的所有试验误差
     errors_fft_mc = zeros(1, num_trials);
     errors_czt_mc = zeros(1, num_trials);
@@ -73,7 +73,7 @@ parfor i = 1:num_offsets
     errors_irife_mc = zeros(1, num_trials);
     errors_iirife_mc = zeros(1, num_trials);
     phases = 2 * pi * rand(1, num_trials); % 随机相位用于每次试验
-    
+
     % 蒙特卡洛模拟
     for j = 1:num_trials
         % a. 生成信号和噪声
@@ -100,15 +100,15 @@ parfor i = 1:num_offsets
         errors_irife_mc(j) = f_irife - f_true;
         errors_iirife_mc(j) = f_iirife - f_true;
     end
-    
+
     % d. 计算当前频偏下的RMSE
-    rmse_fft(i) = sqrt(mean(errors_fft_mc.^2));
-    rmse_czt(i) = sqrt(mean(errors_czt_mc.^2));
-    rmse_improved_czt(i) = sqrt(mean(errors_improved_czt_mc.^2));
-    rmse_rife(i) = sqrt(mean(errors_rife_mc.^2));
-    rmse_mrife(i) = sqrt(mean(errors_mrife_mc.^2));
-    rmse_irife(i) = sqrt(mean(errors_irife_mc.^2));
-    rmse_iirife(i) = sqrt(mean(errors_iirife_mc.^2));
+    rmse_fft(i) = sqrt(mean(errors_fft_mc .^ 2));
+    rmse_czt(i) = sqrt(mean(errors_czt_mc .^ 2));
+    rmse_improved_czt(i) = sqrt(mean(errors_improved_czt_mc .^ 2));
+    rmse_rife(i) = sqrt(mean(errors_rife_mc .^ 2));
+    rmse_mrife(i) = sqrt(mean(errors_mrife_mc .^ 2));
+    rmse_irife(i) = sqrt(mean(errors_irife_mc .^ 2));
+    rmse_iirife(i) = sqrt(mean(errors_iirife_mc .^ 2));
 end
 
 fprintf('模拟完成。\n');
