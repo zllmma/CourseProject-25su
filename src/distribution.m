@@ -10,7 +10,10 @@ fs = 200e6;              % 采样频率 (Hz)
 N = 1024;               % 采样点数
 t = (0:N-1) / fs;       % 时间向量
 A = 1;
-f_true = 50.0114e6;         % 真实信号频率 (Hz)
+f_center = 50e6;        % 中心频率 (50 MHz)
+delta_f0 = fs / N;      % 频率分辨率 (Hz)
+offset = 0.1;           % 相对频偏
+f_true = f_center + offset * delta_f0;         % 真实信号频率 (Hz)
 
 % 【关键】选择一个固定的信噪比进行分析
 SNR_fixed_dB = -8;       % 固定信噪比 (dB)

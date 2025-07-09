@@ -26,10 +26,13 @@ N = 1024;               % 采样点数
 t = (0:N-1) / fs;       % 时间向量
 
 % 设置一个非FFT整数倍的频率，以突显栅栏效应
-f_true = 50.0114e6;         % 真实信号频率 (Hz)
+f_center = 50e6;        % 中心频率 (50 MHz)
+delta_f0 = fs / N;      % 频率分辨率 (Hz)
+offset = 0.4;           % 相对频偏
+f_true = f_center + offset * delta_f0;         % 真实信号频率 (Hz)
 
-SNR_dB = -20:2:12;      % 信噪比范围 (dB)
-num_trials = 1000;      % 每个SNR下的蒙特卡洛试验次数
+SNR_dB = -20:2:20;      % 信噪比范围 (dB)
+num_trials = 2000;      % 每个SNR下的蒙特卡洛试验次数
 
 % CZT 和 改进CZT 算法的参数
 q = 1;                  % 频率细化区间大小控制参数

@@ -1,44 +1,40 @@
 function f_est = mrife_est(s, fs)
-%   智能选择Rife或M-Rife算法进行精确频率估计
-%   该函数首先使用常规Rife算法进行探测，通过其修正因子delta_mag判断
-%   信号频率是否落在Rife算法的“甜点区”。
-%   如果落在甜点区，则直接采用Rife的结果；否则，启动更稳健的M-Rife算法。
+% MRIFE_EST 使用M-Rife算法精确估计信号频率
+%   该函数实现了修正的Rife(MRife)算法，通过对信号进行频谱平移，
+%   使其落在常规Rife算法性能最佳的区域，从而获得高精度且稳定的频率估计。
 %
 %   输入参数:
-%       s  : 输入信号向量 (1 x N)
+%       s  : 输入信号向量 (1 x N)，应为复数或实数信号
 %       fs : 采样频率 (Hz)
 %
 %   输出参数:
 %       f_est  : 估计的频率 (Hz)
 %
 
-% 步骤 1: 进行一次“侦察性”的Rife算法计算
-% 我们需要它的初步估计结果 f_rife，以及关键的判断指标 delta_mag。
-[f_rife, ~, ~, delta_mag] = rife_algorithm(s, fs);
+% 步骤 1: 获取信号参数
+N = length(s);
+n = 0:(N-1); % 创建时间索引向量，从0到N-1
 
+% 步骤 2: 对原始信号进行频谱平移
+% 目标是平移 0.5 个频率分辨单元 (frequency bin)。
+% 一个频率分辨单元的大小为 fs/N。
+% 在时域上，这等同于将信号序列 x(n) 乘以一个复指数序列 exp(j*pi*n/N)。
+% MATLAB 中虚数单位是 '1j' 或 '1i'。
+shift_factor = exp(1j * pi * n / N);
 
-% 步骤 2: 设定判断阈值
-% delta_mag 理论范围在 [0, 0.5] 之间 (考虑r的方向后)。
-% 当 delta_mag 接近0.5时，性能最好；接近0时，性能最差。
-% 我们设定一个阈值，比如0.25。如果delta_mag大于它，说明次大谱线
-% 的能量足够强，可以认为处于“甜点区”。这个值可以根据需求微调。
-sweet_spot_threshold = 0.25; 
+% 产生经过频谱平移的新信号
+s_shifted = s .* shift_factor; % 使用逐元素相乘
 
+% 步骤 3: 对平移后的信号使用您提供的常规 Rife 算法
+% 因为此时信号的频谱已经被移动到Rife算法性能最好的区域，
+% 所以这里得到的估计结果非常精确。
+% 我们只需要估计出的频率，所以用 ~ 忽略 rife_algorithm 的其他输出。
+[f_shifted_est, ~, ~, ~] = rife_algorithm(s_shifted, fs);
 
-% 步骤 3: 根据 delta_mag 的值进行智能决策
-if  delta_mag > sweet_spot_threshold
-    % --- 情况A: 信号落在Rife的甜点区 ---
-    % delta_mag 足够大，说明Rife算法的结果是可靠且高精度的。
-    % 直接采用这次计算的结果，无需额外操作。
-    % disp('决策: 使用 Rife 算法'); % 可选：取消注释以查看决策过程
-    f_est = f_rife;
-    
-else
-    % --- 情况B: 信号落在Rife的性能洼地区 ---
-    % delta_mag 太小，说明Rife算法的结果可能不准确。
-    % 在这种情况下，我们启动为“洼地区”专门优化的M-Rife算法。
-    % disp('决策: 使用 M-Rife 算法'); % 可选：取消注释以查看决策过程
-    f_est = mrife_algorithm(s, fs);
-end
+% 步骤 4: 修正频率估计值
+% 上一步得到的是“平移后”信号的频率，我们需要减去当初施加的平移量，
+% 以此来还原出原始信号的真实频率。
+freq_shift_amount = 0.5 * (fs / N); % 我们施加的平移量大小
+f_est = f_shifted_est - freq_shift_amount;
 
 end
