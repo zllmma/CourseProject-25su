@@ -5,6 +5,9 @@ clear;
 close all;
 clc;
 
+% 添加 algorithms 目录到 MATLAB 路径
+addpath('algorithms');
+
 % --- 1. 模拟参数设置 ---
 fs = 200e6;              % 采样频率 (Hz)
 N = 1024;               % 采样点数
