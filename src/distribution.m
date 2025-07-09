@@ -15,7 +15,7 @@ t = (0:N - 1) / fs; % 时间向量
 A = 1;
 f_center = 50e6; % 中心频率 (50 MHz)
 delta_f0 = fs / N; % 频率分辨率 (Hz)
-offset = 0.1; % 相对频偏
+offset = 0.3; % 相对频偏
 f_true = f_center + offset * delta_f0; % 真实信号频率 (Hz)
 
 % 【关键】选择一个固定的信噪比进行分析
@@ -80,7 +80,7 @@ fprintf('模拟完成。\n');
 % 为了方便比较，统一所有子图的X轴范围
 min_freq = min([estimates_fft, estimates_czt, estimates_improved_czt, estimates_rife, estimates_mrife, estimates_irife, estimates_iirife]);
 max_freq = max([estimates_fft, estimates_czt, estimates_improved_czt, estimates_rife, estimates_mrife, estimates_irife, estimates_iirife]);
-x_limits = [min_freq -1e3, max_freq +1e3]; % 稍微留出一些边距
+x_limits = [min_freq - 1e3, max_freq + 1e3]; % 稍微留出一些边距
 
 % 第一个子图: FFT 方法
 subplot(7, 1, 1);
