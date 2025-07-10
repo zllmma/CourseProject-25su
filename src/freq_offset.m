@@ -170,4 +170,4 @@ ylabel('标准差 (Hz)');
 legend('show', 'Location', 'best');
 
 % 调整整个窗口布局
-sgtitle(['不同频率估计算法在SNR = ' num2str(SNR_dB) ' dB下的性能对比'], 'FontSize', 14);
+sgtitle(['不同频率估计算法在SNR = ' num2str(SNR_dB) ' dB下的性能对比']);

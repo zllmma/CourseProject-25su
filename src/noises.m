@@ -20,8 +20,8 @@ clc;
 addpath('algorithms');
 
 % --- 0. 用户参数选择 (修改此处) ---
-noise_type = 'uniform';  % 可选：'awgn', 'uniform', 'impulse'
-window_type = 'rect';    % 可选：'rect', 'hann', 'hamming', 'blackman'
+noise_type = 'awgn';  % 可选：'awgn', 'uniform', 'impulse'
+window_type = 'hann';    % 可选：'rect', 'hann', 'hamming', 'blackman'
 p_impulse = 0.1;         % 脉冲噪声出现概率 (仅noise_type='impulse'时有效)
 
 % --- 1. 仿真参数设置 ---
@@ -72,7 +72,6 @@ rmse_rife = zeros(1, num_snrs);
 rmse_mrife = zeros(1, num_snrs);
 rmse_irife = zeros(1, num_snrs);
 rmse_iirife = zeros(1, num_snrs);
-rmse_crlb = zeros(1, num_snrs);
 
 % 添加标准差存储变量
 std_fft = zeros(1, num_snrs);
@@ -177,9 +176,6 @@ parfor i = 1:num_snrs
     std_irife(i) = std(errors_irife);
     std_iirife(i) = std(errors_iirife);
     
-    % 注意：CRLB公式适用于无窗情况，此处仅供参考
-    snr_linear = 10^(snr_current_db / 10);
-    rmse_crlb(i) = sqrt((6 * fs^2) / ((2*pi)^2 * snr_linear * N * (N^2 - 1)));
 end
 
 fprintf('模拟完成。\n');
@@ -209,7 +205,6 @@ semilogy(SNR_dB, rmse_rife, '-d', 'LineWidth', 1.5, 'DisplayName', 'RIFE');
 semilogy(SNR_dB, rmse_mrife, '-x', 'LineWidth', 1.5, 'DisplayName', 'MRIFE');
 semilogy(SNR_dB, rmse_irife, '-+', 'LineWidth', 1.5, 'DisplayName', 'IRIFE');
 semilogy(SNR_dB, rmse_iirife, '-*', 'LineWidth', 1.5, 'DisplayName', 'IIRIFE');
-semilogy(SNR_dB, rmse_crlb, 'k--', 'LineWidth', 2, 'DisplayName', 'CRLB(参考)');
 hold off;
 grid on;
 title('RMSE对比');
@@ -235,4 +230,4 @@ ylabel('标准差 (Hz)');
 legend('show', 'Location', 'best');
 
 % 添加总标题
-sgtitle(sprintf('七种频率估计算法性能对比 (噪声: %s, 窗函数: %s)', noise_str, w_name), 'FontSize', 14);
+sgtitle(sprintf('七种频率估计算法性能对比 (噪声: %s, 窗函数: %s)', noise_str, w_name));

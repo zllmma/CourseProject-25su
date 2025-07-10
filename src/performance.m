@@ -163,4 +163,4 @@ ylabel('标准差 (Hz)');
 legend('show', 'Location', 'best');
 
 % 添加总标题
-sgtitle('七种频率估计算法性能对比 (高斯白噪声环境)', 'FontSize', 14);
+sgtitle(['七种频率估计算法在频偏 = ' num2str(offset) ' 性能对比 (高斯白噪声环境)']);
