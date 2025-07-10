@@ -74,15 +74,19 @@ end
 % 计算干信比对应的幅度因子
 A_interference = 10^(ISR_dB/20);  % 干扰信号幅度 (信号幅度=1)
 
-% 初始化结果存储矩阵
-% 行: 干扰频率, 列: 算法
-rmse_results = zeros(num_interferences, 7); % 7种算法
-algorithm_names = {'FFT-Peak', 'CZT', '改进CZT', 'RIFE', 'MRIFE', 'IRIFE', 'IIRIFE'};
+% 初始化结果存储向量 - 每个算法一个向量
+rmse_fft = zeros(1, num_interferences);
+rmse_czt = zeros(1, num_interferences);
+rmse_improved_czt = zeros(1, num_interferences);
+rmse_rife = zeros(1, num_interferences);
+rmse_mrife = zeros(1, num_interferences);
+rmse_irife = zeros(1, num_interferences);
+rmse_iirife = zeros(1, num_interferences);
 
 % --- 3. 执行蒙特卡洛模拟 ---
 fprintf('开始蒙特卡洛模拟，窗类型: %s，干信比: %d dB...\n', w_name, ISR_dB);
 
-for idx = 1:num_interferences
+parfor idx = 1:num_interferences
     fprintf('处理干扰频率: %.2f MHz\n', f_interference_list(idx)/1e6);
     f_interference = f_interference_list(idx);
     
@@ -133,46 +137,44 @@ for idx = 1:num_interferences
     end
     
     % g. 计算当前干扰频率下的RMSE
-    rmse_results(idx, 1) = sqrt(mean(errors_fft.^2));
-    rmse_results(idx, 2) = sqrt(mean(errors_czt.^2));
-    rmse_results(idx, 3) = sqrt(mean(errors_improved_czt.^2));
-    rmse_results(idx, 4) = sqrt(mean(errors_rife.^2));
-    rmse_results(idx, 5) = sqrt(mean(errors_mrife.^2));
-    rmse_results(idx, 6) = sqrt(mean(errors_irife.^2));
-    rmse_results(idx, 7) = sqrt(mean(errors_iirife.^2));
+    rmse_fft(idx) = sqrt(mean(errors_fft.^2));
+    rmse_czt(idx) = sqrt(mean(errors_czt.^2));
+    rmse_improved_czt(idx) = sqrt(mean(errors_improved_czt.^2));
+    rmse_rife(idx) = sqrt(mean(errors_rife.^2));
+    rmse_mrife(idx) = sqrt(mean(errors_mrife.^2));
+    rmse_irife(idx) = sqrt(mean(errors_irife.^2));
+    rmse_iirife(idx) = sqrt(mean(errors_iirife.^2));
 end
 
 fprintf('模拟完成。\n');
 
 % --- 4. 绘制结果 ---
-% 绘制结果时添加标记点
+% 在一个窗口中绘制RMSE结果
 figure('Position', [100, 100, 1200, 700]);
+
+% RMSE对比图
+semilogy(f_interference_list/1e6, rmse_fft, '-o', 'LineWidth', 1.5, 'DisplayName', 'FFT-Peak');
 hold on;
-
-% 创建颜色映射
-colors = lines(7);
-
-% 定义标记点类型
-markers = {'o', 's', 'd', '^', 'v', '>', '<'};
-
-% 为每个算法绘制曲线并添加标记点
-plot_handles = zeros(1, 7);
-for algo = 1:7
-    plot_handles(algo) = plot(f_interference_list/1e6, rmse_results(:, algo), 'LineWidth', 1.5, 'Color', colors(algo, :), 'Marker', markers{algo});
-end
-
-hold off;
-
-% 设置图表属性
-set(gca, 'YScale', 'log');
-grid on;
-title(sprintf('频率估计算法在单频干扰下的性能 (频偏: %s, 窗函数: %s, 干信比: %d dB)', num2str(offset), w_name, ISR_dB));
-xlabel('干扰频率 (MHz)');
-ylabel('RMSE (Hz)');
+semilogy(f_interference_list/1e6, rmse_czt, '-s', 'LineWidth', 1.5, 'DisplayName', 'CZT');
+semilogy(f_interference_list/1e6, rmse_improved_czt, '-^', 'LineWidth', 1.5, 'DisplayName', '改进 CZT');
+semilogy(f_interference_list/1e6, rmse_rife, '-d', 'LineWidth', 1.5, 'DisplayName', 'RIFE');
+semilogy(f_interference_list/1e6, rmse_mrife, '-x', 'LineWidth', 1.5, 'DisplayName', 'MRIFE');
+semilogy(f_interference_list/1e6, rmse_irife, '-+', 'LineWidth', 1.5, 'DisplayName', 'IRIFE');
+semilogy(f_interference_list/1e6, rmse_iirife, '-*', 'LineWidth', 1.5, 'DisplayName', 'IIRIFE');
 
 % 添加垂直线标记信号频率
-line([f_true/1e6, f_true/1e6], ylim, 'Color', 'k', 'LineStyle', '--', 'LineWidth', 1.5);
+line([f_true/1e6, f_true/1e6], ylim, 'Color', 'k', 'LineStyle', '--', 'LineWidth', 1.5, 'HandleVisibility', 'off');
 
-text(f_true/1e6 + 0.05, max(ylim)*0.8, sprintf('信号频率: %.4f MHz', f_true/1e6), 'BackgroundColor', 'white');
-legend(plot_handles, algorithm_names, 'Location', 'best');
+% 添加信号频率标注
+text(f_true/1e6 + 0.05, max(ylim)*0.8, sprintf('信号频率: %.4f MHz', f_true/1e6), ...
+    'FontSize', 10, ...
+    'BackgroundColor', 'white');
+
+hold off;
+grid on;
+title(sprintf('频率估计算法在单频干扰下的性能 (频偏: %s, 窗函数: %s, 干信比: %d dB)', ...
+    num2str(offset), w_name, ISR_dB));
+xlabel('干扰频率 (MHz)');
+ylabel('RMSE (Hz)');
+legend('show', 'Location', 'best');
 
