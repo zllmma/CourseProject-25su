@@ -3,13 +3,19 @@
 % =========================================================================
 %
 % 功能:
-%   1. 可选择噪声类型：'awgn'(高斯白噪声), 'uniform'(均匀分布), 'impulse'(脉冲噪声)
+%   1. 可选择噪声类型：
+%      - 'awgn'(高斯白噪声)
+%      - 'uniform'(均匀分布噪声)
+%      - 'impulse'(脉冲噪声)
+%      - 'rayleigh'(瑞利噪声)
+%      - 'poisson'(泊松噪声)
 %   2. 可选择窗函数：'none'(不使用窗), 'rect'(矩形窗), 'hann'(汉宁窗), 'hamming'(海明窗), 'blackman'(布莱克曼窗)
 %
 % 使用示例:
 %   noise_type = 'awgn';      % 高斯白噪声 (默认)
 %   window_type = 'hann';     % 汉宁窗
 %   p_impulse = 0.1;          % 脉冲噪声出现概率
+%   poisson_lambda = 10;      % 泊松噪声参数
 % =========================================================================
 
 clear;
@@ -20,9 +26,10 @@ clc;
 addpath('algorithms');
 
 % --- 0. 用户参数选择 (修改此处) ---
-noise_type = 'awgn';  % 可选：'awgn', 'uniform', 'impulse'
+noise_type = 'rayleigh';     % 可选：'awgn', 'uniform', 'impulse', 'rayleigh', 'poisson'
 window_type = 'none';    % 可选：'none', 'rect', 'hann', 'hamming', 'blackman'
 p_impulse = 0.1;         % 脉冲噪声出现概率 (仅noise_type='impulse'时有效)
+poisson_lambda = 10;     % 泊松分布参数 (仅noise_type='poisson'时有效)
 
 % --- 1. 仿真参数设置 ---
 fs = 200e6;              % 采样频率 (Hz)
@@ -137,6 +144,24 @@ parfor i = 1:num_snrs
                     (sigma_impulse * randn(1, N));
                 noise_real = impulse_real;
                 noise_imag = impulse_imag;
+            case 'rayleigh'
+                % 瑞利噪声
+                % 调整参数使得噪声功率为noise_power
+                sigma = sqrt(noise_power/2);
+                % 生成瑞利分布的幅度
+                mag = sigma * sqrt(-2*log(rand(1, N)));
+                % 均匀分布的相位
+                phase = 2*pi*rand(1, N);
+                % 转换为实部和虚部
+                noise_real = mag .* cos(phase);
+                noise_imag = mag .* sin(phase);
+            case 'poisson'
+                % 泊松噪声 - 调整信号强度使总功率符合SNR要求
+                % 泊松过程往往用于建模光子计数过程
+                scaling = sqrt(noise_power/poisson_lambda);
+                % 生成泊松随机变量
+                noise_real = (poissrnd(poisson_lambda, 1, N) - poisson_lambda) * scaling;
+                noise_imag = (poissrnd(poisson_lambda, 1, N) - poisson_lambda) * scaling;
         end
         
         noise = noise_real + 1j * noise_imag;
@@ -196,6 +221,10 @@ switch noise_type
         noise_str = '均匀分布噪声';
     case 'impulse'
         noise_str = sprintf('脉冲噪声(p=%.2f)', p_impulse);
+    case 'rayleigh'
+        noise_str = '瑞利噪声';
+    case 'poisson'
+        noise_str = sprintf('泊松噪声(λ=%.1f)', poisson_lambda);
 end
 
 % 在一个窗口中同时绘制RMSE和标准差图
