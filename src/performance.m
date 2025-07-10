@@ -124,9 +124,11 @@ end
 
 fprintf('模拟完成。\n');
 
-% --- 4. 绘制结果 ---
-% 绘制RMSE对比图
-figure;
+% --- 4. 在一个窗口中绘制RMSE和标准差图 ---
+figure('Position', [100, 100, 1200, 500]);
+
+% 左侧：RMSE对比图
+subplot(1, 2, 1);
 semilogy(SNR_dB, rmse_fft, '-o', 'LineWidth', 1.5, 'DisplayName', 'FFT-Peak');
 hold on;
 semilogy(SNR_dB, rmse_czt, '-s', 'LineWidth', 1.5, 'DisplayName', 'CZT');
@@ -138,14 +140,14 @@ semilogy(SNR_dB, rmse_iirife, '-*', 'LineWidth', 1.5, 'DisplayName', 'IIRIFE');
 semilogy(SNR_dB, rmse_crlb, 'k--', 'LineWidth', 2, 'DisplayName', 'CRLB');
 hold off;
 grid on;
-title('七种频率估计算法的RMSE对比');
+title('RMSE对比');
 xlabel('SNR (dB)');
 ylabel('RMSE (Hz)');
 legend('show', 'Location', 'best');
 
-% 绘制标准差对比图
-figure;
-semilogy(SNR_dB, std_fft, '-o', 'LineWidth', 1.5, 'DisplayName', 'FFT');
+% 右侧：标准差对比图
+subplot(1, 2, 2);
+semilogy(SNR_dB, std_fft, '-o', 'LineWidth', 1.5, 'DisplayName', 'FFT-Peak');
 hold on;
 semilogy(SNR_dB, std_czt, '-s', 'LineWidth', 1.5, 'DisplayName', 'CZT');
 semilogy(SNR_dB, std_improved_czt, '-^', 'LineWidth', 1.5, 'DisplayName', '改进 CZT');
@@ -155,7 +157,10 @@ semilogy(SNR_dB, std_irife, '-+', 'LineWidth', 1.5, 'DisplayName', 'IRIFE');
 semilogy(SNR_dB, std_iirife, '-*', 'LineWidth', 1.5, 'DisplayName', 'IIRIFE');
 hold off;
 grid on;
-title('七种频率估计算法的标准差对比');
+title('标准差对比');
 xlabel('SNR (dB)');
-ylabel('SD (Hz)');
+ylabel('标准差 (Hz)');
 legend('show', 'Location', 'best');
+
+% 添加总标题
+sgtitle('七种频率估计算法性能对比 (高斯白噪声环境)', 'FontSize', 14);

@@ -39,6 +39,15 @@ rmse_irife = zeros(1, num_offsets);
 rmse_iirife = zeros(1, num_offsets);
 rmse_crlb = zeros(1, num_offsets); % 添加CRLB存储变量
 
+% 添加标准差存储变量
+std_fft = zeros(1, num_offsets);
+std_czt = zeros(1, num_offsets);
+std_improved_czt = zeros(1, num_offsets);
+std_rife = zeros(1, num_offsets);
+std_mrife = zeros(1, num_offsets);
+std_irife = zeros(1, num_offsets);
+std_iirife = zeros(1, num_offsets);
+
 % --- 3. 执行主循环 (遍历所有频偏) ---
 fprintf('开始在 SNR = %.0f dB 下进行模拟...\n', SNR_dB);
 
@@ -109,12 +118,24 @@ parfor i = 1:num_offsets
     rmse_mrife(i) = sqrt(mean(errors_mrife_mc .^ 2));
     rmse_irife(i) = sqrt(mean(errors_irife_mc .^ 2));
     rmse_iirife(i) = sqrt(mean(errors_iirife_mc .^ 2));
+    
+    % 计算标准差
+    std_fft(i) = std(errors_fft_mc);
+    std_czt(i) = std(errors_czt_mc);
+    std_improved_czt(i) = std(errors_improved_czt_mc);
+    std_rife(i) = std(errors_rife_mc);
+    std_mrife(i) = std(errors_mrife_mc);
+    std_irife(i) = std(errors_irife_mc);
+    std_iirife(i) = std(errors_iirife_mc);
 end
 
 fprintf('模拟完成。\n');
 
-% --- 4. 绘制结果 ---
-figure;
+% --- 4. 在一个窗口中绘制RMSE和标准差图 ---
+figure('Position', [100, 100, 1200, 500]);
+
+% 左侧：RMSE对比图
+subplot(1, 2, 1);
 semilogy(relative_offsets, rmse_fft, '-o', 'LineWidth', 1.5, 'DisplayName', 'FFT-Peak');
 hold on;
 semilogy(relative_offsets, rmse_czt, '-s', 'LineWidth', 1.5, 'DisplayName', 'CZT');
@@ -130,4 +151,23 @@ title(['SNR = ' num2str(SNR_dB) ' dB 时, RMSE随相对频偏的变化']);
 xlabel('相对频偏 (单位: 频率分辨率)');
 ylabel('均方根误差 (RMSE, Hz)');
 legend('show', 'Location', 'best');
-set(gca, 'FontSize', 12);
+
+% 右侧：标准差对比图
+subplot(1, 2, 2);
+semilogy(relative_offsets, std_fft, '-o', 'LineWidth', 1.5, 'DisplayName', 'FFT-Peak');
+hold on;
+semilogy(relative_offsets, std_czt, '-s', 'LineWidth', 1.5, 'DisplayName', 'CZT');
+semilogy(relative_offsets, std_improved_czt, '-^', 'LineWidth', 1.5, 'DisplayName', '改进 CZT');
+semilogy(relative_offsets, std_rife, '-d', 'LineWidth', 1.5, 'DisplayName', 'Rife');
+semilogy(relative_offsets, std_mrife, '-x', 'LineWidth', 1.5, 'DisplayName', 'M-Rife');
+semilogy(relative_offsets, std_irife, '-+', 'LineWidth', 1.5, 'DisplayName', 'I-Rife');
+semilogy(relative_offsets, std_iirife, '-*', 'LineWidth', 1.5, 'DisplayName', 'IIRife');
+hold off;
+grid on;
+title(['SNR = ' num2str(SNR_dB) ' dB 时, 标准差随相对频偏的变化']);
+xlabel('相对频偏 (单位: 频率分辨率)');
+ylabel('标准差 (Hz)');
+legend('show', 'Location', 'best');
+
+% 调整整个窗口布局
+sgtitle(['不同频率估计算法在SNR = ' num2str(SNR_dB) ' dB下的性能对比'], 'FontSize', 14);
