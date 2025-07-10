@@ -25,7 +25,7 @@ addpath('algorithms');
 
 % --- 0. 用户参数选择 (修改此处) ---
 interference_type = 'chirp';  % 可选：'awgn', 'sinusoidal', 'chirp', 'impulse'
-window_type = 'blackman';              % 可选：'rect', 'hann', 'hamming', 'blackman'
+window_type = 'hamming';              % 可选：'rect', 'hann', 'hamming', 'blackman'
 p_impulse = 0.1;                   % 脉冲干扰出现概率 (仅interference_type='impulse'时有效)
 f_interference = 55e6;             % 单频干扰频率 (Hz) (仅interference_type='sinusoidal'时有效)
 f0_chirp = 40e6;                   % 线性调频起始频率 (Hz) (仅interference_type='chirp'时有效)
@@ -42,8 +42,8 @@ delta_f0 = fs / N; % 频率分辨率 (Hz)
 offset = 0.4; % 相对频偏
 f_true = f_center + offset * delta_f0; % 真实信号频率 (Hz)
 
-SNR_dB = -20:2:12;       % 信噪比范围 (dB)
-num_trials = 1000;       % 每个SNR下的蒙特卡洛试验次数
+SIR_dB = -20:2:20;       % 信干比范围 (dB)
+num_trials = 1000;       % 每个SIR下的蒙特卡洛试验次数
 
 % CZT 和 改进CZT 算法的参数
 q = 1;                   % 频率细化区间大小控制参数
@@ -71,33 +71,33 @@ end
 w = w / sqrt(mean(w.^2));
 
 % --- 3. 初始化结果存储变量 ---
-num_snrs = length(SNR_dB);
-rmse_fft = zeros(1, num_snrs);
-rmse_czt = zeros(1, num_snrs);
-rmse_improved_czt = zeros(1, num_snrs);
-rmse_rife = zeros(1, num_snrs);
-rmse_mrife = zeros(1, num_snrs);
-rmse_irife = zeros(1, num_snrs);
-rmse_iirife = zeros(1, num_snrs);
+num_sirs = length(SIR_dB);
+rmse_fft = zeros(1, num_sirs);
+rmse_czt = zeros(1, num_sirs);
+rmse_improved_czt = zeros(1, num_sirs);
+rmse_rife = zeros(1, num_sirs);
+rmse_mrife = zeros(1, num_sirs);
+rmse_irife = zeros(1, num_sirs);
+rmse_iirife = zeros(1, num_sirs);
 
 % 添加标准差存储变量
-std_fft = zeros(1, num_snrs);
-std_czt = zeros(1, num_snrs);
-std_improved_czt = zeros(1, num_snrs);
-std_rife = zeros(1, num_snrs);
-std_mrife = zeros(1, num_snrs);
-std_irife = zeros(1, num_snrs);
-std_iirife = zeros(1, num_snrs);
+std_fft = zeros(1, num_sirs);
+std_czt = zeros(1, num_sirs);
+std_improved_czt = zeros(1, num_sirs);
+std_rife = zeros(1, num_sirs);
+std_mrife = zeros(1, num_sirs);
+std_irife = zeros(1, num_sirs);
+std_iirife = zeros(1, num_sirs);
 
 % --- 4. 执行蒙特卡洛模拟 ---
 fprintf('开始蒙特卡洛模拟，干扰类型: %s, 窗类型: %s...\n', interference_type, w_name);
 
-% 并行执行每个SNR值的试验
-parfor i = 1:num_snrs
-    snr_current_db = SNR_dB(i);
-    fprintf('正在处理 SNR = %.0f dB...\n', snr_current_db);
+% 并行执行每个SIR值的试验
+parfor i = 1:num_sirs
+    sir_current_db = SIR_dB(i);
+    fprintf('正在处理 SIR = %.0f dB...\n', sir_current_db);
     
-    % 用于存储单次SNR下的所有试验误差
+    % 用于存储单次SIR下的所有试验误差
     errors_fft = zeros(1, num_trials);
     errors_czt = zeros(1, num_trials);
     errors_improved_czt = zeros(1, num_trials);
@@ -112,10 +112,10 @@ parfor i = 1:num_snrs
         phi = phases(j);
         s_clean = exp(1j * (2 * pi * f_true * t + phi));
         
-        % b. 根据SNR计算干扰功率并生成干扰
+        % b. 根据SIR计算干扰功率并生成干扰
         signal_power = mean(abs(s_clean).^2);
-        snr_linear = 10^(snr_current_db / 10);
-        interference_power = signal_power / snr_linear;
+        sir_linear = 10^(sir_current_db / 10);
+        interference_power = signal_power / sir_linear;
         interference = zeros(1, N); % 初始化干扰信号
         switch interference_type
             case 'awgn'
@@ -170,7 +170,7 @@ parfor i = 1:num_snrs
         errors_iirife(j) = f_iirife - f_true;
     end
 
-    % f. 计算当前SNR下的RMSE
+    % f. 计算当前SIR下的RMSE
     rmse_fft(i) = sqrt(mean(errors_fft.^2));
     rmse_czt(i) = sqrt(mean(errors_czt.^2));
     rmse_improved_czt(i) = sqrt(mean(errors_improved_czt.^2));
@@ -210,38 +210,38 @@ figure('Position', [100, 100, 1200, 500]);
 
 % 左侧：RMSE对比图
 subplot(1, 2, 1);
-semilogy(SNR_dB, rmse_fft, '-o', 'LineWidth', 1.5, 'DisplayName', 'FFT-Peak');
+semilogy(SIR_dB, rmse_fft, '-o', 'LineWidth', 1.5, 'DisplayName', 'FFT-Peak');
 hold on;
-semilogy(SNR_dB, rmse_czt, '-s', 'LineWidth', 1.5, 'DisplayName', 'CZT');
-semilogy(SNR_dB, rmse_improved_czt, '-^', 'LineWidth', 1.5, 'DisplayName', '改进 CZT');
-semilogy(SNR_dB, rmse_rife, '-d', 'LineWidth', 1.5, 'DisplayName', 'RIFE');
-semilogy(SNR_dB, rmse_mrife, '-x', 'LineWidth', 1.5, 'DisplayName', 'MRIFE');
-semilogy(SNR_dB, rmse_irife, '-+', 'LineWidth', 1.5, 'DisplayName', 'IRIFE');
-semilogy(SNR_dB, rmse_iirife, '-*', 'LineWidth', 1.5, 'DisplayName', 'IIRIFE');
+semilogy(SIR_dB, rmse_czt, '-s', 'LineWidth', 1.5, 'DisplayName', 'CZT');
+semilogy(SIR_dB, rmse_improved_czt, '-^', 'LineWidth', 1.5, 'DisplayName', '改进 CZT');
+semilogy(SIR_dB, rmse_rife, '-d', 'LineWidth', 1.5, 'DisplayName', 'RIFE');
+semilogy(SIR_dB, rmse_mrife, '-x', 'LineWidth', 1.5, 'DisplayName', 'MRIFE');
+semilogy(SIR_dB, rmse_irife, '-+', 'LineWidth', 1.5, 'DisplayName', 'IRIFE');
+semilogy(SIR_dB, rmse_iirife, '-*', 'LineWidth', 1.5, 'DisplayName', 'IIRIFE');
 hold off;
 grid on;
 title('RMSE对比');
-xlabel('SNR (dB)');
+xlabel('SIR (dB)');
 ylabel('RMSE (Hz)');
 legend('show', 'Location', 'best');
 
 % 右侧：标准差对比图
 subplot(1, 2, 2);
-semilogy(SNR_dB, std_fft, '-o', 'LineWidth', 1.5, 'DisplayName', 'FFT-Peak');
+semilogy(SIR_dB, std_fft, '-o', 'LineWidth', 1.5, 'DisplayName', 'FFT-Peak');
 hold on;
-semilogy(SNR_dB, std_czt, '-s', 'LineWidth', 1.5, 'DisplayName', 'CZT');
-semilogy(SNR_dB, std_improved_czt, '-^', 'LineWidth', 1.5, 'DisplayName', '改进 CZT');
-semilogy(SNR_dB, std_rife, '-d', 'LineWidth', 1.5, 'DisplayName', 'RIFE');
-semilogy(SNR_dB, std_mrife, '-x', 'LineWidth', 1.5, 'DisplayName', 'MRIFE');
-semilogy(SNR_dB, std_irife, '-+', 'LineWidth', 1.5, 'DisplayName', 'IRIFE');
-semilogy(SNR_dB, std_iirife, '-*', 'LineWidth', 1.5, 'DisplayName', 'IIRIFE');
+semilogy(SIR_dB, std_czt, '-s', 'LineWidth', 1.5, 'DisplayName', 'CZT');
+semilogy(SIR_dB, std_improved_czt, '-^', 'LineWidth', 1.5, 'DisplayName', '改进 CZT');
+semilogy(SIR_dB, std_rife, '-d', 'LineWidth', 1.5, 'DisplayName', 'RIFE');
+semilogy(SIR_dB, std_mrife, '-x', 'LineWidth', 1.5, 'DisplayName', 'MRIFE');
+semilogy(SIR_dB, std_irife, '-+', 'LineWidth', 1.5, 'DisplayName', 'IRIFE');
+semilogy(SIR_dB, std_iirife, '-*', 'LineWidth', 1.5, 'DisplayName', 'IIRIFE');
 hold off;
 grid on;
 title('标准差对比');
-xlabel('SNR (dB)');
+xlabel('SIR (dB)');
 ylabel('标准差 (Hz)');
 legend('show', 'Location', 'best');
 
 % 添加总标题
-sgtitle(sprintf('七种频率估计算法性能对比 (干扰: %s, 窗函数: %s)', interference_str, w_name), 'FontSize', 14);
+sgtitle(sprintf('七种频率估计算法性能对比 (干扰: %s, 窗函数: %s)', interference_str, w_name));
 
