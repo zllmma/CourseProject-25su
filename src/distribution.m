@@ -15,7 +15,7 @@ t = (0:N - 1) / fs; % 时间向量
 A = 1;
 f_center = 50e6; % 中心频率 (50 MHz)
 delta_f0 = fs / N; % 频率分辨率 (Hz)
-offset = 0.3; % 相对频偏
+offset = 0.1; % 相对频偏
 f_true = f_center + offset * delta_f0; % 真实信号频率 (Hz)
 
 % 【关键】选择一个固定的信噪比进行分析
