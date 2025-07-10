@@ -4,7 +4,7 @@
 %
 % 功能:
 %   1. 可选择噪声类型：'awgn'(高斯白噪声), 'uniform'(均匀分布), 'impulse'(脉冲噪声)
-%   2. 可选择窗函数：'rect'(矩形窗), 'hann'(汉宁窗), 'hamming'(海明窗), 'blackman'(布莱克曼窗)
+%   2. 可选择窗函数：'none'(不使用窗), 'rect'(矩形窗), 'hann'(汉宁窗), 'hamming'(海明窗), 'blackman'(布莱克曼窗)
 %
 % 使用示例:
 %   noise_type = 'awgn';      % 高斯白噪声 (默认)
@@ -21,7 +21,7 @@ addpath('algorithms');
 
 % --- 0. 用户参数选择 (修改此处) ---
 noise_type = 'awgn';  % 可选：'awgn', 'uniform', 'impulse'
-window_type = 'hann';    % 可选：'rect', 'hann', 'hamming', 'blackman'
+window_type = 'none';    % 可选：'none', 'rect', 'hann', 'hamming', 'blackman'
 p_impulse = 0.1;         % 脉冲噪声出现概率 (仅noise_type='impulse'时有效)
 
 % --- 1. 仿真参数设置 ---
@@ -44,6 +44,9 @@ M = 64;                  % 频率细化倍数
 
 % --- 2. 生成窗函数并进行归一化 ---
 switch window_type
+    case 'none'
+        w = ones(1, N);  % 不使用窗函数，相当于矩形窗但不归一化
+        w_name = '无';
     case 'rect'
         w = ones(1, N);
         w_name = '矩形窗';
@@ -61,7 +64,10 @@ switch window_type
 end
 
 % 窗函数归一化 (保持信号功率不变)
-w = w / sqrt(mean(w.^2));
+% 对于'none'选项不进行归一化，保持原始信号的幅度
+if ~strcmp(window_type, 'none')
+    w = w / sqrt(mean(w.^2));
+end
 
 % --- 3. 初始化结果存储变量 ---
 num_snrs = length(SNR_dB);
@@ -99,7 +105,7 @@ parfor i = 1:num_snrs
     errors_irife = zeros(1, num_trials);
     errors_iirife = zeros(1, num_trials);
     phases = 2 * pi * randn(1, num_trials); % 随机相位用于每次试验
-
+    
     for j = 1:num_trials
         % a. 生成纯净信号 (使用复正弦信号)
         phi = phases(j);
@@ -126,9 +132,9 @@ parfor i = 1:num_snrs
             case 'impulse'
                 sigma_impulse = sqrt(noise_power/(2*p_impulse));
                 impulse_real = double(rand(1, N) < p_impulse) .* ...
-                              (sigma_impulse * randn(1, N));
+                    (sigma_impulse * randn(1, N));
                 impulse_imag = double(rand(1, N) < p_impulse) .* ...
-                              (sigma_impulse * randn(1, N));
+                    (sigma_impulse * randn(1, N));
                 noise_real = impulse_real;
                 noise_imag = impulse_imag;
         end
@@ -147,7 +153,7 @@ parfor i = 1:num_snrs
         f_mrife = mrife_est(s_windowed, fs);
         f_irife = irife_est(s_windowed, fs);
         f_iirife = iirife_est(s_windowed, fs);
-
+        
         % e. 计算并存储误差
         errors_fft(j) = f_fft - f_true;
         errors_czt(j) = f_czt - f_true;
@@ -157,7 +163,7 @@ parfor i = 1:num_snrs
         errors_irife(j) = f_irife - f_true;
         errors_iirife(j) = f_iirife - f_true;
     end
-
+    
     % f. 计算当前SNR下的RMSE
     rmse_fft(i) = sqrt(mean(errors_fft.^2));
     rmse_czt(i) = sqrt(mean(errors_czt.^2));
@@ -205,6 +211,17 @@ semilogy(SNR_dB, rmse_rife, '-d', 'LineWidth', 1.5, 'DisplayName', 'RIFE');
 semilogy(SNR_dB, rmse_mrife, '-x', 'LineWidth', 1.5, 'DisplayName', 'MRIFE');
 semilogy(SNR_dB, rmse_irife, '-+', 'LineWidth', 1.5, 'DisplayName', 'IRIFE');
 semilogy(SNR_dB, rmse_iirife, '-*', 'LineWidth', 1.5, 'DisplayName', 'IIRIFE');
+
+% 添加CRLB理论下界曲线 (仅当噪声类型为AWGN且不使用窗函数时)
+if strcmp(noise_type, 'awgn') && strcmp(window_type, 'none')
+    % 计算CRLB曲线
+    snr_linear = 10.^(SNR_dB / 10);
+    % 单频信号的CRLB
+    crlb = sqrt(3 / (2 * pi^2 * N * (N^2 - 1))) * fs ./ sqrt(snr_linear);
+    % 在图上绘制CRLB曲线
+    semilogy(SNR_dB, crlb, '--k', 'LineWidth', 2, 'DisplayName', 'CRLB');
+end
+
 hold off;
 grid on;
 title('RMSE对比');
@@ -230,4 +247,4 @@ ylabel('标准差 (Hz)');
 legend('show', 'Location', 'best');
 
 % 添加总标题
-sgtitle(sprintf('七种频率估计算法性能对比 (噪声: %s, 窗函数: %s)', noise_str, w_name));
+sgtitle(sprintf('七种频率估计算法性能对比 (频偏: %s, 噪声: %s, 窗函数: %s)', num2str(offset), noise_str, w_name));

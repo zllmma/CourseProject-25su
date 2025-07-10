@@ -5,7 +5,7 @@
 % 新增功能:
 %   1. 可选择干扰类型：'awgn'(高斯白噪声), 'sinusoidal'(单频干扰), 
 %      'chirp'(线性调频干扰), 'impulse'(脉冲干扰)
-%   2. 可选择窗函数：'rect'(矩形窗), 'hann'(汉宁窗), 'hamming'(海明窗), 'blackman'(布莱克曼窗)
+%   2. 可选择窗函数：'none'(不使用窗), 'rect'(矩形窗), 'hann'(汉宁窗), 'hamming'(海明窗), 'blackman'(布莱克曼窗)
 %
 % 使用示例:
 %   interference_type = 'sinusoidal';  % 单频干扰
@@ -25,7 +25,7 @@ addpath('algorithms');
 
 % --- 0. 用户参数选择 (修改此处) ---
 interference_type = 'chirp';  % 可选：'awgn', 'sinusoidal', 'chirp', 'impulse'
-window_type = 'hamming';              % 可选：'rect', 'hann', 'hamming', 'blackman'
+window_type = 'rect';              % 可选：'none', 'rect', 'hann', 'hamming', 'blackman'
 p_impulse = 0.1;                   % 脉冲干扰出现概率 (仅interference_type='impulse'时有效)
 f_interference = 55e6;             % 单频干扰频率 (Hz) (仅interference_type='sinusoidal'时有效)
 f0_chirp = 40e6;                   % 线性调频起始频率 (Hz) (仅interference_type='chirp'时有效)
@@ -51,6 +51,9 @@ M = 64;                  % 频率细化倍数
 
 % --- 2. 生成窗函数并进行归一化 ---
 switch window_type
+    case 'none'
+        w = ones(1, N);  % 不使用窗函数，相当于矩形窗但不归一化
+        w_name = '无';
     case 'rect'
         w = ones(1, N);
         w_name = '矩形窗';
@@ -68,7 +71,10 @@ switch window_type
 end
 
 % 窗函数归一化 (保持信号功率不变)
-w = w / sqrt(mean(w.^2));
+% 对于'none'选项不进行归一化，保持原始信号的幅度
+if ~strcmp(window_type, 'none')
+    w = w / sqrt(mean(w.^2));
+end
 
 % --- 3. 初始化结果存储变量 ---
 num_sirs = length(SIR_dB);
@@ -243,5 +249,5 @@ ylabel('标准差 (Hz)');
 legend('show', 'Location', 'best');
 
 % 添加总标题
-sgtitle(sprintf('七种频率估计算法性能对比 (干扰: %s, 窗函数: %s)', interference_str, w_name));
+sgtitle(sprintf('七种频率估计算法性能对比 (频偏: %s, 干扰: %s, 窗函数: %s)', num2str(offset), interference_str, w_name));
 
