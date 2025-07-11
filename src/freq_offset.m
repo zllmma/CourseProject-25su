@@ -17,7 +17,7 @@ A = 1.0; % 信号幅度
 f_center = 50e6; % 中心频率 (50 MHz)
 delta_f0 = fs / N; % 频率分辨率
 
-SNR_dB = -8; % 固定信噪比 (dB)
+SNR_dB = 100; % 固定信噪比 (dB)
 
 % 设置相对频偏的范围
 relative_offsets = -0.5:0.05:0.5;

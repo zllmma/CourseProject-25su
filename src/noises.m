@@ -26,8 +26,8 @@ clc;
 addpath('algorithms');
 
 % --- 0. 用户参数选择 (修改此处) ---
-noise_type = 'rayleigh';     % 可选：'awgn', 'uniform', 'impulse', 'rayleigh', 'poisson'
-window_type = 'none';    % 可选：'none', 'rect', 'hann', 'hamming', 'blackman'
+noise_type = 'awgn';     % 可选：'awgn', 'uniform', 'impulse', 'rayleigh', 'poisson'
+window_type = 'hann';    % 可选：'none', 'rect', 'hann', 'hamming', 'blackman'
 p_impulse = 0.1;         % 脉冲噪声出现概率 (仅noise_type='impulse'时有效)
 poisson_lambda = 10;     % 泊松分布参数 (仅noise_type='poisson'时有效)
 
@@ -39,7 +39,7 @@ t = (0:N-1) / fs;        % 时间向量
 % 设置一个非FFT整数倍的频率，以突显栅栏效应
 f_center = 50e6; % 中心频率 (50 MHz)
 delta_f0 = fs / N; % 频率分辨率 (Hz)
-offset = 0.4; % 相对频偏
+offset = 0.1; % 相对频偏
 f_true = f_center + offset * delta_f0; % 真实信号频率 (Hz)
 
 SNR_dB = -20:2:20;       % 信噪比范围 (dB)
@@ -118,10 +118,11 @@ parfor i = 1:num_snrs
         phi = phases(j);
         s_clean = exp(1j * (2 * pi * f_true * t + phi));
         
-        % b. 根据SNR计算噪声功率并生成噪声
-        signal_power = mean(abs(s_clean).^2);
+        % b. 先对纯净信号加窗，然后基于加窗后的信号功率计算噪声
+        s_windowed_clean = s_clean .* w;
+        windowed_signal_power = mean(abs(s_windowed_clean).^2);
         snr_linear = 10^(snr_current_db / 10);
-        noise_power = signal_power / snr_linear;
+        noise_power = windowed_signal_power / snr_linear;
         
         % 根据噪声类型生成噪声
         % 初始化噪声向量
@@ -163,12 +164,11 @@ parfor i = 1:num_snrs
                 noise_real = (poissrnd(poisson_lambda, 1, N) - poisson_lambda) * scaling;
                 noise_imag = (poissrnd(poisson_lambda, 1, N) - poisson_lambda) * scaling;
         end
-        
+
         noise = noise_real + 1j * noise_imag;
-        s_noisy = s_clean + noise;
-        
-        % c. 应用窗函数
-        s_windowed = s_noisy .* w;
+
+        % c. 合成最终的带噪信号（纯净信号已经加窗）
+        s_windowed = s_windowed_clean + noise;
         
         % d. 使用七种算法进行频率估计
         f_fft = fft_est(s_windowed, fs);

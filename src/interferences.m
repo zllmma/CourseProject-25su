@@ -5,7 +5,8 @@
 % 新增功能:
 %   1. 可选择干扰类型：'awgn'(高斯白噪声), 'sinusoidal'(单频干扰), 
 %      'chirp'(线性调频干扰), 'impulse'(脉冲干扰)
-%   2. 可选择窗函数：'none'(不使用窗), 'rect'(矩形窗), 'hann'(汉宁窗), 'hamming'(海明窗), 'blackman'(布莱克曼窗)
+%   2. 可选择窗函数：'none'(不使用窗), 'rect'(矩形窗), 'hann'(Hann窗), 
+%      'hamming'(Hamming窗), 'blackman'(Blackman窗), 'kaiser'(Kaiser窗)
 %
 % 使用示例:
 %   interference_type = 'sinusoidal';  % 单频干扰
@@ -25,7 +26,7 @@ addpath('algorithms');
 
 % --- 0. 用户参数选择 (修改此处) ---
 interference_type = 'chirp';  % 可选：'awgn', 'sinusoidal', 'chirp', 'impulse'
-window_type = 'rect';              % 可选：'none', 'rect', 'hann', 'hamming', 'blackman'
+window_type = 'rect';              % 可选：'none', 'rect', 'hann', 'hamming', 'blackman', 'kaiser'
 p_impulse = 0.1;                   % 脉冲干扰出现概率 (仅interference_type='impulse'时有效)
 f_interference = 55e6;             % 单频干扰频率 (Hz) (仅interference_type='sinusoidal'时有效)
 f0_chirp = 40e6;                   % 线性调频起始频率 (Hz) (仅interference_type='chirp'时有效)
@@ -118,8 +119,11 @@ parfor i = 1:num_sirs
         phi = phases(j);
         s_clean = exp(1j * (2 * pi * f_true * t + phi));
         
-        % b. 根据SIR计算干扰功率并生成干扰
-        signal_power = mean(abs(s_clean).^2);
+        % b. 先对纯净信号应用窗函数 (重要: 用于正确计算信号功率)
+        s_windowed_clean = s_clean .* w;
+        
+        % c. 根据SIR计算干扰功率并生成干扰
+        signal_power = mean(abs(s_windowed_clean).^2);  % 基于加窗后的信号功率
         sir_linear = 10^(sir_current_db / 10);
         interference_power = signal_power / sir_linear;
         interference = zeros(1, N); % 初始化干扰信号
@@ -152,12 +156,10 @@ parfor i = 1:num_sirs
                 interference = impulse_real + 1j * impulse_imag;
         end
         
-        s_noisy = s_clean + interference;
+        % d. 相加
+        s_windowed = s_windowed_clean + interference;
         
-        % c. 应用窗函数
-        s_windowed = s_noisy .* w;
-        
-        % d. 使用七种算法进行频率估计
+        % e. 使用七种算法进行频率估计
         f_fft = fft_est(s_windowed, fs);
         f_czt = czt_est(s_windowed, fs, q, M);
         f_improved_czt = improved_czt_est(s_windowed, fs, q, M);
@@ -166,7 +168,7 @@ parfor i = 1:num_sirs
         f_irife = irife_est(s_windowed, fs);
         f_iirife = iirife_est(s_windowed, fs);
 
-        % e. 计算并存储误差
+        % f. 计算并存储误差
         errors_fft(j) = f_fft - f_true;
         errors_czt(j) = f_czt - f_true;
         errors_improved_czt(j) = f_improved_czt - f_true;
@@ -176,7 +178,7 @@ parfor i = 1:num_sirs
         errors_iirife(j) = f_iirife - f_true;
     end
 
-    % f. 计算当前SIR下的RMSE
+    % g. 计算当前SIR下的RMSE
     rmse_fft(i) = sqrt(mean(errors_fft.^2));
     rmse_czt(i) = sqrt(mean(errors_czt.^2));
     rmse_improved_czt(i) = sqrt(mean(errors_improved_czt.^2));
