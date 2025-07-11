@@ -17,7 +17,14 @@ close all;
 clc;
 
 % 添加 algorithms 目录到 MATLAB 路径
-addpath('algorithms');
+% 首先检查路径是否存在，然后添加
+if exist('src/algorithms', 'dir')
+    addpath('src/algorithms');
+elseif exist('algorithms', 'dir')
+    addpath('algorithms');
+else
+    error('无法找到算法目录，请确保 algorithms 目录存在');
+end
 
 % --- 1. 仿真参数设置 ---
 fs = 200e6;                    % 采样频率 (200 MHz)
@@ -152,15 +159,12 @@ for w_idx = 1:num_windows
             
             % 计算RMSE和标准差
             for alg_idx = 1:num_algorithms
+                % 直接计算误差的RMSE和标准差，忽略NaN值
                 valid_errors = errors_all(alg_idx, ~isnan(errors_all(alg_idx, :)));
-                if length(valid_errors) > num_trials * 0.8
-                    rmse_results(w_idx, snr_idx, off_idx, alg_idx) = sqrt(mean(valid_errors.^2));
-                    std_results(w_idx, snr_idx, off_idx, alg_idx) = std(valid_errors);
-                else
-                    rmse_results(w_idx, snr_idx, off_idx, alg_idx) = NaN;
-                    std_results(w_idx, snr_idx, off_idx, alg_idx) = NaN;
-                end
+                rmse_results(w_idx, snr_idx, off_idx, alg_idx) = sqrt(mean(valid_errors.^2));
+                std_results(w_idx, snr_idx, off_idx, alg_idx) = std(valid_errors);
             end
+
         end
     end
 end
