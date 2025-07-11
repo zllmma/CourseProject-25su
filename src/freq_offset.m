@@ -1,12 +1,26 @@
 % =========================================================================
-%      在固定低信噪比下，RMSE随相对频偏变化的对比脚本
+%      在固定低信噪比下，RMSE随相对频偏变化的对比脚本 (支持窗函数)
 % =========================================================================
+%
+% 新增功能:
+%   1. 可选择窗函数：'none'(不使用窗), 'rect'(矩形窗), 'hann'(Hann窗), 
+%      'hamming'(Hamming窗), 'blackman'(Blackman窗), 'kaiser'(Kaiser窗)
+%   2. CRLB仅在无窗函数时显示（因为CRLB理论适用于无窗情况）
+%
+% 使用示例:
+%   window_type = 'hann';  % 窗函数类型
+%   SNR_dB = 10;           % 信噪比 (dB)
+% =========================================================================
+
 clear;
 close all;
 clc;
 
 % 添加 algorithms 目录到 MATLAB 路径
 addpath('algorithms');
+
+% --- 0. 用户参数选择 (修改此处) ---
+window_type = 'hamming';              % 可选：'none', 'rect', 'hann', 'hamming', 'blackman', 'kaiser'
 
 % --- 1. 模拟参数设置 ---
 fs = 200e6; % 采样频率 (200 MHz)
@@ -17,7 +31,7 @@ A = 1.0; % 信号幅度
 f_center = 50e6; % 中心频率 (50 MHz)
 delta_f0 = fs / N; % 频率分辨率
 
-SNR_dB = 100; % 固定信噪比 (dB)
+SNR_dB = 0; % 固定信噪比 (dB) - 更改为更合理的值
 
 % 设置相对频偏的范围
 relative_offsets = -0.5:0.05:0.5;
@@ -28,7 +42,38 @@ num_trials = 1000; % 每个频偏下的蒙特卡洛试验次数
 q = 1;
 M = 64;
 
-% --- 2. 初始化结果存储变量 ---
+% --- 2. 生成窗函数并进行归一化 ---
+switch window_type
+    case 'none'
+        w = ones(1, N);  % 不使用窗函数，相当于矩形窗但不归一化
+        w_name = '无';
+    case 'rect'
+        w = ones(1, N);
+        w_name = '矩形窗';
+    case 'hann'
+        w = hann(N)';
+        w_name = 'Hann窗';
+    case 'hamming'
+        w = hamming(N)';
+        w_name = 'Hamming窗';
+    case 'blackman'
+        w = blackman(N)';
+        w_name = 'Blackman窗';
+    case 'kaiser'
+        beta = 8.6;  % Kaiser窗参数
+        w = kaiser(N, beta)';
+        w_name = 'Kaiser窗';
+    otherwise
+        error('未知窗类型: %s。支持的窗类型: none, rect, hann, hamming, blackman, kaiser', window_type);
+end
+
+% 窗函数归一化 (保持信号功率不变)
+% 对于'none'选项不进行归一化，保持原始信号的幅度
+if ~strcmp(window_type, 'none')
+    w = w / sqrt(mean(w.^2));  % 功率归一化：保持信号功率不变
+end
+
+% --- 3. 初始化结果存储变量 ---
 num_offsets = length(relative_offsets);
 rmse_fft = zeros(1, num_offsets);
 rmse_czt = zeros(1, num_offsets);
@@ -48,19 +93,24 @@ std_mrife = zeros(1, num_offsets);
 std_irife = zeros(1, num_offsets);
 std_iirife = zeros(1, num_offsets);
 
-% --- 3. 执行主循环 (遍历所有频偏) ---
-fprintf('开始在 SNR = %.0f dB 下进行模拟...\n', SNR_dB);
+% --- 4. 执行主循环 (遍历所有频偏) ---
+fprintf('开始在 SNR = %.0f dB 下进行模拟，窗函数: %s...\n', SNR_dB, w_name);
 
 % 提前计算噪声参数
 snr_linear = 10 ^ (SNR_dB / 10);
-signal_power = A ^ 2; % 复信号功率
+signal_power = A ^ 2; % 复信号功率 (假设无窗或窗函数已归一化)
 noise_power = signal_power / snr_linear;
 noise_std_per_component = sqrt(noise_power / 2);
 
-% 计算CRLB (Cramér-Rao Lower Bound)
+% 计算CRLB (Cramér-Rao Lower Bound) - 仅适用于无窗情况
 % CRLB = sqrt((6 * fs^2) / ((2*pi)^2 * snr_linear * N * (N^2 - 1)))
 % CRLB与频偏无关，仅与SNR、采样点数和采样频率有关
-rmse_crlb(:) = sqrt((6 * fs ^ 2) / ((2 * pi) ^ 2 * snr_linear * N * (N ^ 2 - 1)));
+if strcmp(window_type, 'none')
+    rmse_crlb(:) = sqrt((6 * fs ^ 2) / ((2 * pi) ^ 2 * snr_linear * N * (N ^ 2 - 1)));
+    show_crlb = true;
+else
+    show_crlb = false;
+end
 
 % 使用 parfor 并行处理每个相对频偏
 % 以加速模拟过程
@@ -85,13 +135,27 @@ parfor i = 1:num_offsets
 
     % 蒙特卡洛模拟
     for j = 1:num_trials
-        % a. 生成信号和噪声
+        % a. 生成纯净信号
         phi = phases(j); % 随机相位
         s_clean = A * exp(1j * (2 * pi * f_true * t + phi));
-        noise = (randn(1, N) + 1j * randn(1, N)) * noise_std_per_component;
-        s_noisy = s_clean + noise;
+        
+        % b. 先对纯净信号应用窗函数 (用于正确计算信号功率)
+        s_windowed_clean = s_clean .* w;
+        
+        % c. 基于加窗后的信号功率生成噪声
+        windowed_signal_power = mean(abs(s_windowed_clean).^2);
+        actual_snr_linear = 10 ^ (SNR_dB / 10);
+        actual_noise_power = windowed_signal_power / actual_snr_linear;
+        actual_noise_std = sqrt(actual_noise_power / 2);
+        
+        % d. 生成噪声并应用相同的窗函数
+        noise = (randn(1, N) + 1j * randn(1, N)) * actual_noise_std;
+        noise_windowed = noise .* w;
+        
+        % e. 最终的含噪信号
+        s_noisy = s_windowed_clean + noise_windowed;
 
-        % b. 使用三种算法进行频率估计
+        % f. 使用七种算法进行频率估计
         f_fft = fft_est(s_noisy, fs);
         f_czt = czt_est(s_noisy, fs, q, M);
         f_improved_czt = improved_czt_est(s_noisy, fs, q, M);
@@ -100,7 +164,7 @@ parfor i = 1:num_offsets
         f_irife = irife_est(s_noisy, fs);
         f_iirife = iirife_est(s_noisy, fs);
 
-        % c. 计算并存储误差
+        % g. 计算并存储误差
         errors_fft_mc(j) = f_fft - f_true;
         errors_czt_mc(j) = f_czt - f_true;
         errors_improved_czt_mc(j) = f_improved_czt - f_true;
@@ -110,7 +174,7 @@ parfor i = 1:num_offsets
         errors_iirife_mc(j) = f_iirife - f_true;
     end
 
-    % d. 计算当前频偏下的RMSE
+    % h. 计算当前频偏下的RMSE
     rmse_fft(i) = sqrt(mean(errors_fft_mc .^ 2));
     rmse_czt(i) = sqrt(mean(errors_czt_mc .^ 2));
     rmse_improved_czt(i) = sqrt(mean(errors_improved_czt_mc .^ 2));
@@ -144,7 +208,12 @@ semilogy(relative_offsets, rmse_rife, '-d', 'LineWidth', 1.5, 'DisplayName', 'Ri
 semilogy(relative_offsets, rmse_mrife, '-x', 'LineWidth', 1.5, 'DisplayName', 'M-Rife');
 semilogy(relative_offsets, rmse_irife, '-+', 'LineWidth', 1.5, 'DisplayName', 'I-Rife');
 semilogy(relative_offsets, rmse_iirife, '-*', 'LineWidth', 1.5, 'DisplayName', 'IIRife');
-semilogy(relative_offsets, rmse_crlb, 'k--', 'LineWidth', 2, 'DisplayName', 'CRLB');
+
+% 只在无窗函数时显示CRLB理论下界
+if show_crlb
+    semilogy(relative_offsets, rmse_crlb, 'k--', 'LineWidth', 2, 'DisplayName', 'CRLB', 'HandleVisibility', 'on');
+end
+
 hold off;
 grid on;
 title(['SNR = ' num2str(SNR_dB) ' dB 时, RMSE随相对频偏的变化']);
@@ -170,4 +239,4 @@ ylabel('标准差 (Hz)');
 legend('show', 'Location', 'best');
 
 % 调整整个窗口布局
-sgtitle(sprintf('七种频率在不同频偏下估计算法性能对比 (噪声：AWGN)'));
+sgtitle(sprintf('七种频率估计算法性能对比 (窗函数: %s, 噪声: AWGN)', w_name));
