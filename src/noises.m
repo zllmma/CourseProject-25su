@@ -9,11 +9,11 @@
 %      - 'impulse'(脉冲噪声)
 %      - 'rayleigh'(瑞利噪声)
 %      - 'poisson'(泊松噪声)
-%   2. 可选择窗函数：'none'(不使用窗), 'rect'(矩形窗), 'hann'(汉宁窗), 'hamming'(海明窗), 'blackman'(布莱克曼窗)
+%   2. 可选择窗函数：'none'(不使用窗), 'hann'(Hann窗), 'hamming'(Hamming窗), 'blackman'(Blackman窗), 'kaiser'(Kaiser窗)
 %
 % 使用示例:
 %   noise_type = 'awgn';      % 高斯白噪声 (默认)
-%   window_type = 'hann';     % 汉宁窗
+%   window_type = 'hann';     % 可选：'none', 'hann', 'hamming', 'blackman', 'kaiser'
 %   p_impulse = 0.1;          % 脉冲噪声出现概率
 %   poisson_lambda = 10;      % 泊松噪声参数
 % =========================================================================
@@ -53,21 +53,22 @@ M = 64;                  % 频率细化倍数
 switch window_type
     case 'none'
         w = ones(1, N);  % 不使用窗函数，相当于矩形窗但不归一化
-        w_name = '无';
-    case 'rect'
-        w = ones(1, N);
-        w_name = '矩形窗';
+        w_name = '无窗函数';
     case 'hann'
         w = hann(N)';
-        w_name = '汉宁窗';
+        w_name = 'Hann窗';
     case 'hamming'
         w = hamming(N)';
-        w_name = '海明窗';
+        w_name = 'Hamming窗';
     case 'blackman'
         w = blackman(N)';
-        w_name = '布莱克曼窗';
+        w_name = 'Blackman窗';
+    case 'kaiser'
+        beta = 8.6;  % Kaiser窗参数
+        w = kaiser(N, beta)';
+        w_name = 'Kaiser窗';
     otherwise
-        error('未知窗类型: %s', window_type);
+        error('未知窗类型: %s。支持的窗类型: none, hann, hamming, blackman, kaiser', window_type);
 end
 
 % 窗函数归一化 (保持信号功率不变)

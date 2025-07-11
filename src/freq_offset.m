@@ -3,7 +3,7 @@
 % =========================================================================
 %
 % 新增功能:
-%   1. 可选择窗函数：'none'(不使用窗), 'rect'(矩形窗), 'hann'(Hann窗), 
+%   1. 可选择窗函数：'none'(不使用窗), 'hann'(Hann窗), 
 %      'hamming'(Hamming窗), 'blackman'(Blackman窗), 'kaiser'(Kaiser窗)
 %   2. CRLB仅在无窗函数时显示（因为CRLB理论适用于无窗情况）
 %
@@ -20,7 +20,7 @@ clc;
 addpath('algorithms');
 
 % --- 0. 用户参数选择 (修改此处) ---
-window_type = 'hamming';              % 可选：'none', 'rect', 'hann', 'hamming', 'blackman', 'kaiser'
+window_type = 'none';              % 可选：'none', 'hann', 'hamming', 'blackman', 'kaiser'
 
 % --- 1. 模拟参数设置 ---
 fs = 200e6; % 采样频率 (200 MHz)
@@ -31,12 +31,12 @@ A = 1.0; % 信号幅度
 f_center = 50e6; % 中心频率 (50 MHz)
 delta_f0 = fs / N; % 频率分辨率
 
-SNR_dB = 0; % 固定信噪比 (dB) - 更改为更合理的值
+SNR_dB = 10; % 固定信噪比 (dB) - 更改为更合理的值
 
 % 设置相对频偏的范围
 relative_offsets = -0.5:0.05:0.5;
 
-num_trials = 1000; % 每个频偏下的蒙特卡洛试验次数
+num_trials = 2000; % 每个频偏下的蒙特卡洛试验次数
 
 % CZT 参数
 q = 1;
@@ -47,9 +47,6 @@ switch window_type
     case 'none'
         w = ones(1, N);  % 不使用窗函数，相当于矩形窗但不归一化
         w_name = '无';
-    case 'rect'
-        w = ones(1, N);
-        w_name = '矩形窗';
     case 'hann'
         w = hann(N)';
         w_name = 'Hann窗';
@@ -64,7 +61,7 @@ switch window_type
         w = kaiser(N, beta)';
         w_name = 'Kaiser窗';
     otherwise
-        error('未知窗类型: %s。支持的窗类型: none, rect, hann, hamming, blackman, kaiser', window_type);
+        error('未知窗类型: %s。支持的窗类型: none, hann, hamming, blackman, kaiser', window_type);
 end
 
 % 窗函数归一化 (保持信号功率不变)

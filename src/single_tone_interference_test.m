@@ -18,7 +18,7 @@ clc;
 addpath('algorithms');  % 添加算法目录到 MATLAB 路径
 
 % --- 0. 用户参数选择 (修改此处) ---
-window_type = 'blackman';              % 可选：'none', 'rect', 'hann', 'hamming', 'blackman'
+window_type = 'hann';              % 可选：'none', 'hann', 'hamming', 'blackman', 'kaiser'
 ISR_dB = 0;                        % 干信比 (干扰功率/信号功率, dB)
 
 % --- 1. 仿真参数设置 ---
@@ -48,21 +48,22 @@ M = 64;                  % 频率细化倍数
 switch window_type
     case 'none'
         w = ones(1, N);  % 不使用窗函数，相当于矩形窗但不归一化
-        w_name = '无';
-    case 'rect'
-        w = ones(1, N);
-        w_name = '矩形窗';
+        w_name = '无窗函数';
     case 'hann'
         w = hann(N)';
-        w_name = '汉宁窗';
+        w_name = 'Hann窗';
     case 'hamming'
         w = hamming(N)';
-        w_name = '海明窗';
+        w_name = 'Hamming窗';
     case 'blackman'
         w = blackman(N)';
-        w_name = '布莱克曼窗';
+        w_name = 'Blackman窗';
+    case 'kaiser'
+        beta = 8.6;  % Kaiser窗参数
+        w = kaiser(N, beta)';
+        w_name = 'Kaiser窗';
     otherwise
-        error('未知窗类型: %s', window_type);
+        error('未知窗类型: %s。支持的窗类型: none, hann, hamming, blackman, kaiser', window_type);
 end
 
 % 窗函数归一化 (保持信号功率不变)
