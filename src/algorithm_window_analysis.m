@@ -61,12 +61,11 @@ fprintf('高SNR: %d dB, 低SNR: %d dB\n', SNR_high, SNR_low);
 fprintf('频偏点数: %d, 试验次数: %d\n', num_offsets, num_trials);
 
 % --- 3. 主分析循环 ---
-parfor w_idx = 1:num_windows
+for w_idx = 1:num_windows
     window_type = window_types{w_idx};
     window_name = window_names{w_idx};
     
     fprintf('\n--- 处理窗函数: %s ---\n', window_name);
-    w = zeros(1, N);
     % 生成窗函数 (不包含矩形窗)
     switch window_type
         case 'none'
@@ -107,9 +106,7 @@ parfor w_idx = 1:num_windows
             current_offset = relative_offsets(off_idx);
             f_true = f_center + current_offset * delta_f0;
             
-            if mod(off_idx, 3) == 0
-                fprintf('    频偏 %.1f 处理中...\n', current_offset);
-            end
+            fprintf('    频偏 %.1f 处理中...\n', current_offset);
             
             % 存储所有算法在当前条件下的估计误差
             errors_all = zeros(num_algorithms, num_trials);
