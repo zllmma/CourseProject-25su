@@ -7,7 +7,14 @@ close all;
 clc;
 
 % 添加 algorithms 目录到 MATLAB 路径
-addpath('algorithms');
+% 首先检查路径是否存在，然后添加
+if exist('src/algorithms', 'dir')
+    addpath('src/algorithms');
+elseif exist('algorithms', 'dir')
+    addpath('algorithms');
+else
+    error('无法找到算法目录，请确保 algorithms 目录存在');
+end
 
 % --- 1. 仿真参数设置 ---
 fs = 200e6; % 采样频率 (Hz)
